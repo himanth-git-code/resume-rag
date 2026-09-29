@@ -114,7 +114,7 @@ CELERY_TASK_ACKS_LATE = True
 CELERY_TASK_REJECT_ON_WORKER_LOST = True
 CELERY_WORKER_PREFETCH_MULTIPLIER = 1
 
-# S3-compatible private object storage (MinIO locally, AWS S3 in production).
+# S3-compatible private object storage (SeaweedFS locally, AWS S3 in production).
 # Consumed once resume upload lands; the storage backend is added then.
 S3_ENDPOINT_URL = env("S3_ENDPOINT_URL", default=None)
 S3_ACCESS_KEY_ID = env("S3_ACCESS_KEY_ID", default=None)

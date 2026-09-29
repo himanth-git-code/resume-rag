@@ -13,7 +13,7 @@ Next.js (frontend/) ──/api/* rewrite──▶ Django REST (backend/)
                                           ├─ PostgreSQL + pgvector  (source of truth)
                                           ├─ Redis                  (Celery broker/results)
                                           ├─ Celery worker          (async/AI jobs)
-                                          └─ S3 / MinIO             (private documents)
+                                          └─ S3 / SeaweedFS         (private documents)
 ```
 
 - **backend/**: Django 5.2 LTS and DRF.
@@ -21,7 +21,7 @@ Next.js (frontend/) ──/api/* rewrite──▶ Django REST (backend/)
   - Domain apps live in `backend/apps/`, and business logic goes in each app's `services.py`.
 - **frontend/**: Next.js (App Router), TypeScript, Tailwind CSS, shadcn/ui, TanStack Query and Zod.
   - The browser only calls same-origin `/api/*`, which Next.js proxies to Django. There's no CORS setup.
-- **docker-compose.yml**: postgres (pgvector), redis, minio (plus a bucket init job), backend, celery and frontend.
+- **docker-compose.yml**: postgres (pgvector), redis, seaweedfs (local S3, plus a one-shot `s3-init` bucket job), backend, celery and frontend.
 
 ## Environment variables
 
@@ -34,7 +34,7 @@ Copy `.env.example` to `.env`. Every variable is documented there.
 | `DJANGO_ALLOWED_HOSTS` | Comma-separated hosts |
 | `DATABASE_URL` | Postgres connection URL |
 | `REDIS_URL` | Redis URL for the Celery broker and result backend |
-| `S3_*` | S3-compatible storage (MinIO locally) |
+| `S3_*` | S3-compatible storage (SeaweedFS locally) |
 
 Production only: `DJANGO_CSRF_TRUSTED_ORIGINS`, `DJANGO_SECURE_SSL_REDIRECT`, `DJANGO_SECURE_HSTS_SECONDS`.
 
@@ -50,7 +50,14 @@ docker compose exec backend python manage.py migrate
 | --- | --- |
 | http://localhost:3000 | Frontend (shows backend health) |
 | http://localhost:8000/api/health/ | Backend health check |
-| http://localhost:9001 | MinIO console (credentials from `.env`) |
+
+Those are the default host ports. If they clash with something else on your machine, set `FRONTEND_PORT` / `BACKEND_PORT` in `.env`. Postgres, Redis and SeaweedFS don't publish host ports; reach them through the containers:
+
+```bash
+docker compose exec postgres psql -U ai_identity ai_identity
+docker compose exec redis redis-cli
+docker compose run --rm --entrypoint aws s3-init --endpoint-url http://seaweedfs:8333 s3 ls   # aws-cli against local S3
+```
 
 ## Docker commands
 
@@ -58,7 +65,7 @@ docker compose exec backend python manage.py migrate
 docker compose up -d --build        # start / rebuild
 docker compose logs -f backend      # follow logs (backend, celery, frontend, ...)
 docker compose exec backend bash    # shell in the backend container
-docker compose down                 # stop (add -v to delete DB and MinIO data)
+docker compose down                 # stop (add -v to delete DB and S3 data)
 ```
 
 After changing Python requirements or `package.json`, rebuild the image with `docker compose up -d --build`.

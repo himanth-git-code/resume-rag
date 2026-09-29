@@ -20,6 +20,11 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
+    "allauth",
+    "allauth.account",
+    "allauth.socialaccount",
+    "allauth.socialaccount.providers.google",
+    "allauth.headless",
     "apps.accounts",
     "apps.candidates",
     "apps.documents",
@@ -44,6 +49,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "allauth.account.middleware.AccountMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -70,6 +76,11 @@ DATABASES = {"default": env.db("DATABASE_URL")}
 DATABASES["default"]["CONN_MAX_AGE"] = env.int("DATABASE_CONN_MAX_AGE", default=60)
 
 AUTH_USER_MODEL = "accounts.User"
+
+AUTHENTICATION_BACKENDS = [
+    "django.contrib.auth.backends.ModelBackend",
+    "allauth.account.auth_backends.AuthenticationBackend",
+]
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
@@ -102,6 +113,54 @@ REST_FRAMEWORK = {
 }
 
 REDIS_URL = env("REDIS_URL")
+
+# Shared cache: allauth's login/signup rate limits must be shared across processes.
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": REDIS_URL,
+    }
+}
+
+# The browser reaches Django through the Next.js proxy, which sets X-Forwarded-Host
+# to the public host. Needed so OAuth redirect URIs and frontend redirects point
+# at the frontend origin rather than the internal backend host.
+USE_X_FORWARDED_HOST = True
+
+# Authentication (django-allauth, headless: JSON API for the Next.js SPA).
+ACCOUNT_USER_MODEL_USERNAME_FIELD = None
+ACCOUNT_LOGIN_METHODS = {"email"}
+ACCOUNT_SIGNUP_FIELDS = ["email*", "password1*"]
+ACCOUNT_EMAIL_VERIFICATION = "none"
+ACCOUNT_UNIQUE_EMAIL = True
+ACCOUNT_PREVENT_ENUMERATION = True
+HEADLESS_ONLY = True
+HEADLESS_CLIENTS = ("browser",)
+# Relative URLs resolve against the forwarded (frontend) host.
+HEADLESS_FRONTEND_URLS = {
+    "account_signup": "/signup",
+    "account_reset_password": "/login",
+    "account_reset_password_from_key": "/login",
+    "account_confirm_email": "/login",
+    "socialaccount_login_error": "/login?error=social",
+}
+
+# Google sign-in: a verified Google email logs into the account with that email.
+SOCIALACCOUNT_EMAIL_AUTHENTICATION = True
+SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True
+SOCIALACCOUNT_PROVIDERS = {}
+GOOGLE_OAUTH_CLIENT_ID = env("GOOGLE_OAUTH_CLIENT_ID", default="")
+GOOGLE_OAUTH_CLIENT_SECRET = env("GOOGLE_OAUTH_CLIENT_SECRET", default="")
+if GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET:
+    SOCIALACCOUNT_PROVIDERS["google"] = {
+        "APPS": [{"client_id": GOOGLE_OAUTH_CLIENT_ID, "secret": GOOGLE_OAUTH_CLIENT_SECRET}],
+        "SCOPE": ["openid", "email", "profile"],
+        "AUTH_PARAMS": {"prompt": "select_account"},
+        "OAUTH_PKCE_ENABLED": True,
+    }
+
+EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="no-reply@localhost")
 
 CELERY_BROKER_URL = REDIS_URL
 CELERY_RESULT_BACKEND = REDIS_URL

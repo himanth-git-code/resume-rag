@@ -35,6 +35,7 @@ Copy `.env.example` to `.env`. Every variable is documented there.
 | `DATABASE_URL` | Postgres connection URL |
 | `REDIS_URL` | Redis URL for the Celery broker and result backend |
 | `S3_*` | S3-compatible storage (SeaweedFS locally) |
+| `GOOGLE_OAUTH_CLIENT_ID` / `GOOGLE_OAUTH_CLIENT_SECRET` | Optional Google sign-in (see below) |
 
 Production only: `DJANGO_CSRF_TRUSTED_ORIGINS`, `DJANGO_SECURE_SSL_REDIRECT`, `DJANGO_SECURE_HSTS_SECONDS`.
 
@@ -58,6 +59,18 @@ docker compose exec postgres psql -U ai_identity ai_identity
 docker compose exec redis redis-cli
 docker compose run --rm --entrypoint aws s3-init --endpoint-url http://seaweedfs:8333 s3 ls   # aws-cli against local S3
 ```
+
+## Authentication
+
+Sign-up and login use [django-allauth](https://docs.allauth.org/) in headless mode. It's a JSON API under `/_allauth/browser/v1/`, uses Django session cookies and CSRF, and Next.js proxies it so everything stays same-origin.
+
+To enable **Google sign-in**:
+
+1. In Google Cloud Console, go to APIs & Services → Credentials → Create OAuth client ID (type: Web application).
+2. Add the authorised redirect URI `http://localhost:3000/accounts/google/login/callback/`.
+3. Put the client ID and secret in `.env`, then restart with `docker compose up -d`.
+
+A verified Google email signs into the existing account with that email, if there is one.
 
 ## Docker commands
 

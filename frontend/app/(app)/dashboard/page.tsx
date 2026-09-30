@@ -22,6 +22,7 @@ export default function DashboardPage() {
 
   const { dashboard } = data;
   const status = dashboard.latest_parse_status;
+  const reviewPending = status === "ready_for_review";
 
   return (
     <div className="grid gap-6">
@@ -54,9 +55,18 @@ export default function DashboardPage() {
             <CardTitle>2. Profile</CardTitle>
             <CardDescription>Review and correct the information extracted from your resume.</CardDescription>
           </CardHeader>
-          <CardContent className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Status</span>
-            <Badge variant="secondary">{dashboard.has_profile ? "saved" : "not started"}</Badge>
+          <CardContent className="grid gap-4 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Status</span>
+              <Badge variant={reviewPending ? "default" : "secondary"}>
+                {reviewPending ? "ready for review" : dashboard.has_profile ? "saved" : "not started"}
+              </Badge>
+            </div>
+            <Button asChild variant={reviewPending || !dashboard.has_profile ? "default" : "outline"}>
+              <Link href="/profile">
+                {reviewPending ? "Review details" : dashboard.has_profile ? "Edit profile" : "Start profile"}
+              </Link>
+            </Button>
           </CardContent>
         </Card>
       </div>

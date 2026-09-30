@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 const NAV = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/resume", label: "Resume" },
+  { href: "/profile", label: "Profile" },
 ];
 
 export function AppHeader() {

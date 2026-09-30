@@ -109,6 +109,14 @@ pnpm lint     # ESLint
    - Transient AI errors are retried with backoff. Permanent errors fail the job with a message that's safe to show the candidate.
 3. The frontend polls the job until it's `ready_for_review` or `failed`. The draft is never written to the profile until the candidate reviews and saves it.
 
+## Candidate profile (review and save)
+
+- `GET /api/resumes/jobs/<id>/draft/` returns a job's AI draft, shaped like a profile. Missing data is `null`.
+- `GET /api/profile/` returns the saved profile.
+- `PUT /api/profile/` (optionally with `job_id`) replaces the whole profile in one transaction. It's the only code path that writes profile data, and saving with a `job_id` marks that job `applied`.
+  - Each saved row records `source_type` (`resume` or `candidate_input`), and resume-sourced rows link to the source document for later grounding.
+- Links must be `http(s)` or have no scheme. `javascript:`, `data:` and similar are rejected, because these links will later be shown to employers.
+
 **Malware scanning (planned):** uploads are only ever parsed as PDF/DOCX, never executed or served back publicly. Before files are shared or served to anyone else, a ClamAV scan step will run between upload and extraction.
 
 ## AI provider configuration

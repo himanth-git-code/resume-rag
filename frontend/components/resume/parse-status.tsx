@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -34,10 +36,17 @@ export function ParseStatusPanel({ job }: { job: ResumeJob }) {
       )}
 
       {job.status === "ready_for_review" && (
-        <p className="text-muted-foreground">
-          Your resume has been read. Next you&apos;ll review and correct the extracted details before anything is
-          saved to your profile.
-        </p>
+        <div className="grid gap-3">
+          <p className="text-muted-foreground">
+            Your resume has been read. Review and correct the extracted details; nothing is saved to your profile
+            until you do.
+          </p>
+          <div>
+            <Button asChild size="sm">
+              <Link href="/profile">Review details</Link>
+            </Button>
+          </div>
+        </div>
       )}
 
       {job.status === "failed" && (

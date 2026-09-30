@@ -13,11 +13,6 @@ def post_json(client, url, data, **extra):
     return client.post(url, data=json.dumps(data), content_type="application/json", **extra)
 
 
-@pytest.fixture
-def user(db):
-    return get_user_model().objects.create_user(email="jane@example.com", password="S3cure-pass-123")
-
-
 @pytest.mark.django_db
 def test_signup_creates_user_and_session(client):
     response = post_json(client, f"{AUTH}/signup", {"email": "New@Example.com", "password": "S3cure-pass-123"})
@@ -71,7 +66,12 @@ def test_me_returns_current_user(client, user):
     assert response.status_code == 200
     body = response.json()
     assert body["email"] == "jane@example.com"
-    assert body["dashboard"] == {"has_resume": False, "latest_parse_status": None, "has_profile": False}
+    assert body["dashboard"] == {
+        "has_resume": False,
+        "latest_parse_status": None,
+        "latest_job_id": None,
+        "has_profile": False,
+    }
 
 
 @pytest.mark.django_db

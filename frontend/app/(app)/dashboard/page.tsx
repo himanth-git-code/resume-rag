@@ -1,6 +1,10 @@
 "use client";
 
+import Link from "next/link";
+
+import { STATUS_LABEL } from "@/components/resume/parse-status";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useMe } from "@/lib/api/me";
 
@@ -17,6 +21,7 @@ export default function DashboardPage() {
   }
 
   const { dashboard } = data;
+  const status = dashboard.latest_parse_status;
 
   return (
     <div className="grid gap-6">
@@ -31,11 +36,16 @@ export default function DashboardPage() {
             <CardTitle>1. Resume</CardTitle>
             <CardDescription>Upload your resume so we can extract your experience and skills.</CardDescription>
           </CardHeader>
-          <CardContent className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Status</span>
-            <Badge variant="secondary">
-              {dashboard.has_resume ? (dashboard.latest_parse_status ?? "uploaded") : "not uploaded"}
-            </Badge>
+          <CardContent className="grid gap-4 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Status</span>
+              <Badge variant={status === "failed" ? "destructive" : "secondary"}>
+                {status ? STATUS_LABEL[status] : "not uploaded"}
+              </Badge>
+            </div>
+            <Button asChild variant={dashboard.has_resume ? "outline" : "default"}>
+              <Link href="/resume">{dashboard.has_resume ? "View resume" : "Upload resume"}</Link>
+            </Button>
           </CardContent>
         </Card>
 

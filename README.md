@@ -101,9 +101,27 @@ pnpm test     # Vitest
 pnpm lint     # ESLint
 ```
 
+## Resume upload and parsing
+
+1. `POST /api/resumes/` validates the file by its content, not its name: PDF or DOCX, at most `RESUME_MAX_UPLOAD_MB` MB and `RESUME_MAX_PDF_PAGES` pages. It extracts the text and stores the file in private S3 under an opaque key.
+   - PDFs without a text layer (scanned images) are rejected straight away, because there's no OCR yet.
+2. A Celery task (`apps.resume_parser.tasks.process_resume`) sends the text to the AI provider and stores a structured draft on the `ResumeParseJob`.
+   - Transient AI errors are retried with backoff. Permanent errors fail the job with a message that's safe to show the candidate.
+3. The frontend polls the job until it's `ready_for_review` or `failed`. The draft is never written to the profile until the candidate reviews and saves it.
+
+**Malware scanning (planned):** uploads are only ever parsed as PDF/DOCX, never executed or served back publicly. Before files are shared or served to anyone else, a ClamAV scan step will run between upload and extraction.
+
 ## AI provider configuration
 
-TBD. This lands in Phase 2. AI calls will go through the `AIProvider` abstraction in `backend/apps/ai/`.
+All AI calls go through `apps.ai.providers.get_provider()` (the `AIProvider` interface in `backend/apps/ai/`), so business logic never imports a vendor SDK.
+
+| Variable | Purpose |
+| --- | --- |
+| `AI_PROVIDER` | `anthropic` for real parsing; `fake` makes no API calls and returns an empty draft |
+| `AI_MODEL` | Model ID, default `claude-opus-5` |
+| `ANTHROPIC_API_KEY` | Required when `AI_PROVIDER=anthropic` |
+
+The Anthropic provider uses structured outputs (a Pydantic schema) with adaptive thinking. It also enables the API's server-side refusal fallback. Resume text is never logged; only job IDs, token counts and error types are.
 
 ## Payment provider configuration
 

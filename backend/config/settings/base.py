@@ -110,6 +110,9 @@ REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": [
         "rest_framework.renderers.JSONRenderer",
     ],
+    "DEFAULT_THROTTLE_RATES": {
+        "resume_upload": env("RESUME_UPLOAD_RATE", default="20/hour"),
+    },
 }
 
 REDIS_URL = env("REDIS_URL")
@@ -173,13 +176,40 @@ CELERY_TASK_ACKS_LATE = True
 CELERY_TASK_REJECT_ON_WORKER_LOST = True
 CELERY_WORKER_PREFETCH_MULTIPLIER = 1
 
-# S3-compatible private object storage (SeaweedFS locally, AWS S3 in production).
-# Consumed once resume upload lands; the storage backend is added then.
-S3_ENDPOINT_URL = env("S3_ENDPOINT_URL", default=None)
-S3_ACCESS_KEY_ID = env("S3_ACCESS_KEY_ID", default=None)
-S3_SECRET_ACCESS_KEY = env("S3_SECRET_ACCESS_KEY", default=None)
-S3_BUCKET_NAME = env("S3_BUCKET_NAME", default=None)
-S3_REGION_NAME = env("S3_REGION_NAME", default="us-east-1")
+# Private object storage for candidate documents: S3 in production, SeaweedFS
+# (S3-compatible) locally. Objects are never public; access is via short-lived
+# signed URLs only.
+STORAGES = {
+    "default": {
+        "BACKEND": "storages.backends.s3.S3Storage",
+        "OPTIONS": {
+            "bucket_name": env("S3_BUCKET_NAME", default=None),
+            "endpoint_url": env("S3_ENDPOINT_URL", default=None),
+            "access_key": env("S3_ACCESS_KEY_ID", default=None),
+            "secret_key": env("S3_SECRET_ACCESS_KEY", default=None),
+            "region_name": env("S3_REGION_NAME", default="us-east-1"),
+            "default_acl": "private",
+            "querystring_auth": True,
+            "querystring_expire": 300,
+            "file_overwrite": False,
+            "addressing_style": "path",
+            "signature_version": "s3v4",
+        },
+    },
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+}
+
+# Resume uploads.
+RESUME_MAX_UPLOAD_MB = env.int("RESUME_MAX_UPLOAD_MB", default=5)
+RESUME_MAX_PDF_PAGES = env.int("RESUME_MAX_PDF_PAGES", default=20)
+DATA_UPLOAD_MAX_MEMORY_SIZE = (RESUME_MAX_UPLOAD_MB + 1) * 1024 * 1024
+FILE_UPLOAD_MAX_MEMORY_SIZE = DATA_UPLOAD_MAX_MEMORY_SIZE
+
+# AI provider (see apps/ai). "fake" returns canned output and needs no API key.
+AI_PROVIDER = env("AI_PROVIDER", default="anthropic")
+AI_MODEL = env("AI_MODEL", default="claude-opus-5")
+AI_REQUEST_TIMEOUT_SECONDS = env.float("AI_REQUEST_TIMEOUT_SECONDS", default=180.0)
+ANTHROPIC_API_KEY = env("ANTHROPIC_API_KEY", default="")
 
 LOGGING = {
     "version": 1,

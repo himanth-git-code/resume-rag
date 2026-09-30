@@ -112,6 +112,7 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_THROTTLE_RATES": {
         "resume_upload": env("RESUME_UPLOAD_RATE", default="20/hour"),
+        "question_generate": env("QUESTION_GENERATE_RATE", default="20/hour"),
     },
 }
 

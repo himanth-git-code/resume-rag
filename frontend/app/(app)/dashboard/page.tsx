@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useMe } from "@/lib/api/me";
+import { isGenerating, useLatestGeneration, useQuestionFacets } from "@/lib/api/questions";
 
 const KB_LABEL = {
   idle: "not built yet",
@@ -17,6 +18,10 @@ const KB_LABEL = {
 
 export default function DashboardPage() {
   const { data, isPending, isError } = useMe();
+  const facets = useQuestionFacets();
+  const latestGeneration = useLatestGeneration();
+  const questionCount = facets.data?.total ?? 0;
+  const generating = isGenerating(latestGeneration.data?.generation?.status);
 
   if (isPending) return <p className="text-sm text-muted-foreground">Loading your dashboard…</p>;
   if (isError) {
@@ -73,6 +78,24 @@ export default function DashboardPage() {
               <Link href="/profile">
                 {reviewPending ? "Review details" : dashboard.has_profile ? "Edit profile" : "Start profile"}
               </Link>
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>3. Interview questions</CardTitle>
+            <CardDescription>Practice questions tailored to your roles, projects and skills.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Status</span>
+              <Badge variant="secondary">
+                {generating ? "generating…" : questionCount > 0 ? `${questionCount} questions` : "none yet"}
+              </Badge>
+            </div>
+            <Button asChild variant={questionCount > 0 ? "default" : "outline"}>
+              <Link href="/questions">{questionCount > 0 ? "Practice questions" : "View questions"}</Link>
             </Button>
           </CardContent>
         </Card>

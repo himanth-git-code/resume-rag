@@ -12,6 +12,7 @@ const NAV = [
   { href: "/resume", label: "Resume" },
   { href: "/profile", label: "Profile" },
   { href: "/notes", label: "Notes" },
+  { href: "/questions", label: "Questions" },
 ];
 
 export function AppHeader() {

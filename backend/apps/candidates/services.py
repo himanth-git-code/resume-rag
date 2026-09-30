@@ -3,6 +3,7 @@ from dataclasses import asdict, dataclass
 from django.db import transaction
 
 from apps.knowledge_base.services import KnowledgeBaseService
+from apps.questions.services import QuestionGenerationService
 from apps.resume_parser.models import ResumeParseJob
 from apps.resume_parser.services import ResumeProcessingService
 
@@ -128,6 +129,7 @@ class CandidateProfileService:
                 ResumeParseJob.objects.filter(pk=job.pk).update(status=ResumeParseJob.Status.APPLIED)
 
             KnowledgeBaseService.schedule_rebuild(user)
+            QuestionGenerationService.schedule_initial(user)
 
         return CandidateProfileService.serialize(profile)
 

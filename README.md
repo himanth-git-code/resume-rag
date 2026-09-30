@@ -130,6 +130,23 @@ pnpm lint     # ESLint
 
 Embeddings use `EMBEDDING_PROVIDER` / `EMBEDDING_MODEL` / `VOYAGE_API_KEY` (Voyage `voyage-4`, 1024 dimensions). `fake` works without a key, but its search results aren't meaningful.
 
+## Interview questions
+
+`apps.questions` generates practice questions from the candidate's approved profile and notes (SPEC §8).
+
+- **Sections:** a generation is split into sections, each one structured-output call: `overview` (general, behavioral, domain), `skills` (technical), and one per role and per project (experience or project questions, with deep-dive follow-ups on concrete claims).
+- **Refs:** every profile item is sent with a ref such as `experience:12`. Talking points and sources may only cite refs from the same section; anything else is dropped. Talking points restate the candidate's own items and are never model answers.
+- **Resumable:** each finished section is saved straight away, so a retried task continues where it stopped.
+  - The first set appears section by section.
+  - A regeneration stays hidden until every section has succeeded, then replaces the old set, so a failure never loses questions.
+- **Triggers:** the first profile save starts a generation automatically. After that, the questions page shows "profile changed" with a **Regenerate** button, so there's no API cost on every edit.
+- **Generate more** adds about 5 questions for the current category or item, avoiding existing ones.
+- **API:**
+  - `GET /api/questions/` (filters `category`, `source`, `difficulty`, `search`; paginated) and `GET /api/questions/facets/`
+  - `POST /api/questions/generate/` (`kind` is `full` or `more`, throttled by `QUESTION_GENERATE_RATE`)
+  - `GET /api/questions/generations/latest/`
+- **Cost:** a full run makes about 1 + roles + projects + 1 calls on `AI_MODEL`.
+
 ## AI provider configuration
 
 All AI calls go through `apps.ai.providers.get_provider()` (the `AIProvider` interface in `backend/apps/ai/`), so business logic never imports a vendor SDK.

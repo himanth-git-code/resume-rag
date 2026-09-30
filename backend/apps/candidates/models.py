@@ -104,3 +104,19 @@ class CandidateAchievement(ProfileItem):
     title = models.CharField(max_length=300)
     description = models.TextField(blank=True)
     date = models.CharField(max_length=50, blank=True)
+
+
+class CandidateNote(models.Model):
+    """Free-text context from the candidate that isn't on the resume (SPEC §2, §7)."""
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="candidate_notes")
+    title = models.CharField(max_length=200)
+    body = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-updated_at", "-pk"]
+
+    def __str__(self):
+        return self.title

@@ -9,4 +9,6 @@ celery[redis]==5.6.3
 redis==6.4.0  # kombu[redis] requires <6.5
 anthropic==1.9.0
 pypdf==6.19.0
+pgvector==0.5.0
+requests==2.34.2  # Voyage embeddings client (apps/ai/providers/voyage.py); also used by allauth
 python-docx==1.2.0

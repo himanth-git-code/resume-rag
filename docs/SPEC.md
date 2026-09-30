@@ -448,6 +448,7 @@ Candidate controls:
 * Expire public URL
 * Control visible sections
 * Disable chatbot
+* Enable/disable job description matching (see §10A)
 * View access/activity history
 
 ---
@@ -504,6 +505,72 @@ Do not fabricate an answer.
 
 ---
 
+# 10A. Job Description Matching
+
+An employer can paste a job description and get an evidence-based assessment of how well the candidate's profile matches it.
+
+It is available wherever the employer chatbot is: on the employer AI profile (§9) and as a widget on the candidate's personal website (§11). Candidates can also run it privately on their own dashboard to check their fit for a job before applying.
+
+Flow:
+
+Job description (untrusted text)
+↓
+Requirement extraction (structured output)
+↓
+Per-requirement retrieval (structured lookup + vector search, scoped to the candidate)
+↓
+Per-requirement assessment with cited evidence (structured output)
+↓
+Score computed in code from the assessments
+↓
+Report
+
+## Output
+
+For every extracted requirement:
+
+* requirement text
+* importance: required / preferred
+* status: met / partial / no evidence
+* evidence: the candidate profile items that support it, with their source section
+* short explanation
+
+Plus an overall score (0–100) and a short summary of strengths and gaps.
+
+## Rules
+
+* The score is calculated deterministically in code from the per-requirement statuses and importance weights. The LLM never outputs the overall number directly, so the same assessments always produce the same score.
+* "No evidence" means the information is not in the candidate's approved profile. It must never be presented as the candidate lacking the skill. Wording: "Not found in the candidate's profile", never "The candidate does not have …".
+* Every "met" or "partial" status must cite profile evidence. An assessment without evidence is downgraded to "no evidence".
+* Only candidate-approved, visible profile data may be used, with the same candidate-ID scoping as §10. Sections the candidate has hidden are excluded.
+* Assess only job-relevant skills, experience, qualifications and certifications. Never infer or score protected or personal attributes such as age (for example from graduation years), gender, ethnicity, nationality, disability or employment gaps.
+* The job description is untrusted input: pass it to the model as delimited data and ignore any instructions inside it.
+* Show a disclaimer with every report: the score is an aid based on the candidate's profile, not a hiring decision.
+
+## Candidate controls
+
+* Enable/disable matching on the employer profile and website independently of the chatbot
+* Preview a match themselves before enabling it
+* View the history of match requests made against their profile (timestamp, job title if detected, score)
+
+## Abuse and cost controls
+
+The public matching endpoint is unauthenticated and calls the LLM, so it requires:
+
+* rate limiting per IP address and per candidate
+* a maximum job description length
+* bot protection on the public widget
+* caching of reports for identical job descriptions against an unchanged profile
+* audit logging of every match request
+
+## Storage
+
+JobMatchRequest: candidate, source (employer_profile / website / candidate_self), job description hash, extracted requirements, per-requirement assessments, score, model, created date.
+
+Store the job description text itself only for as long as needed to display the report, and never log it.
+
+---
+
 # 11. Website Generator
 
 The platform should generate a professional personal website from the candidate's structured profile.
@@ -523,6 +590,8 @@ Theme
 Rendered Website
 
 Initial release must contain at least five substantially different templates.
+
+Every template can include the employer chatbot (§10) and job description matching (§10A) as an embedded widget. The widgets call the same backend endpoints as the employer AI profile and obey the same candidate controls: if the candidate disables the chatbot or matching, the widget is not rendered.
 
 ## Template 1 — Executive
 
@@ -811,6 +880,7 @@ QuestionSource
 EmployerProfile
 EmployerChatSession
 EmployerChatMessage
+JobMatchRequest
 
 Website
 WebsiteTemplate
@@ -1045,6 +1115,8 @@ Candidate visibility controls
 
 Chat session logging
 
+Job description matching (employer profile and candidate self-check)
+
 ## Phase 4
 
 Website Builder
@@ -1058,6 +1130,8 @@ Candidate content mapping
 Secure preview
 
 Public website
+
+Embedded chatbot and job matching widgets
 
 ## Phase 5
 

@@ -119,6 +119,17 @@ pnpm lint     # ESLint
 
 **Malware scanning (planned):** uploads are only ever parsed as PDF/DOCX, never executed or served back publicly. Before files are shared or served to anyone else, a ClamAV scan step will run between upload and extraction.
 
+## Knowledge base
+
+`apps.knowledge_base` indexes each candidate's **approved** profile and notes for semantic search. The raw resume text is never indexed, because it may contain things the candidate removed during review.
+
+- **Chunks:** one per role, project, education, certification and achievement; one for the basics; one per skill category; and notes split on paragraphs at about 1,500 characters. Each has a stable key (`experience:12`, `note:5:0`) and a `source_type` / `source_id` pointing back to the profile row.
+- **Rebuilds** run in Celery after every profile or note change. They're incremental: only new or changed chunks are embedded, and removed data is deleted. A per-user lock serialises concurrent rebuilds. If embedding fails, the existing knowledge base stays as it was.
+- **Retrieval:** `CandidateRetrievalService.search(user, query)` runs cosine search on pgvector (HNSW index), always filtered to that one candidate. It's used by the Phase 3 employer chatbot.
+- Profile items keep their IDs across saves, so anything citing `source_id` stays valid.
+
+Embeddings use `EMBEDDING_PROVIDER` / `EMBEDDING_MODEL` / `VOYAGE_API_KEY` (Voyage `voyage-4`, 1024 dimensions). `fake` works without a key, but its search results aren't meaningful.
+
 ## AI provider configuration
 
 All AI calls go through `apps.ai.providers.get_provider()` (the `AIProvider` interface in `backend/apps/ai/`), so business logic never imports a vendor SDK.
@@ -128,6 +139,9 @@ All AI calls go through `apps.ai.providers.get_provider()` (the `AIProvider` int
 | `AI_PROVIDER` | `anthropic` for real parsing; `fake` makes no API calls and returns an empty draft |
 | `AI_MODEL` | Model ID, default `claude-opus-5` |
 | `ANTHROPIC_API_KEY` | Required when `AI_PROVIDER=anthropic` |
+| `EMBEDDING_PROVIDER` | `voyage` for real embeddings; `fake` needs no key |
+| `EMBEDDING_MODEL` | Voyage model, default `voyage-4` (1024 dimensions) |
+| `VOYAGE_API_KEY` | Required when `EMBEDDING_PROVIDER=voyage` |
 
 The Anthropic provider uses structured outputs (a Pydantic schema) with adaptive thinking. It also enables the API's server-side refusal fallback. Resume text is never logged; only job IDs, token counts and error types are.
 

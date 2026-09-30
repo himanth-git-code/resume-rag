@@ -16,3 +16,4 @@ STORAGES = {
 }
 
 AI_PROVIDER = "fake"
+EMBEDDING_PROVIDER = "fake"

@@ -8,6 +8,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useMe } from "@/lib/api/me";
 
+const KB_LABEL = {
+  idle: "not built yet",
+  indexing: "updating…",
+  ready: "up to date",
+  failed: "needs attention",
+} as const;
+
 export default function DashboardPage() {
   const { data, isPending, isError } = useMe();
 
@@ -20,7 +27,7 @@ export default function DashboardPage() {
     );
   }
 
-  const { dashboard } = data;
+  const { dashboard, knowledge_base: kb } = data;
   const status = dashboard.latest_parse_status;
   const reviewPending = status === "ready_for_review";
 
@@ -66,6 +73,35 @@ export default function DashboardPage() {
               <Link href="/profile">
                 {reviewPending ? "Review details" : dashboard.has_profile ? "Edit profile" : "Start profile"}
               </Link>
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Knowledge base</CardTitle>
+            <CardDescription>
+              Your saved profile and notes, indexed so questions and employer answers can draw on them.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Status</span>
+              <Badge variant={kb.status === "failed" ? "destructive" : "secondary"}>{KB_LABEL[kb.status]}</Badge>
+            </div>
+            {kb.status === "ready" && (
+              <p className="text-muted-foreground">
+                {kb.chunk_count} {kb.chunk_count === 1 ? "entry" : "entries"} indexed
+                {kb.indexed_at ? ` · updated ${new Date(kb.indexed_at).toLocaleString()}` : ""}
+              </p>
+            )}
+            {kb.status === "failed" && (
+              <p className="text-muted-foreground">
+                Indexing didn&apos;t finish. It will try again the next time you save your profile or a note.
+              </p>
+            )}
+            <Button asChild variant="outline">
+              <Link href="/notes">Add notes</Link>
             </Button>
           </CardContent>
         </Card>

@@ -14,7 +14,8 @@ const sourceType = z.enum(["resume", "candidate_input"]).catch("candidate_input"
 const str = z.string().nullish();
 const strList = z.array(z.string()).nullish();
 
-const withSource = <T extends z.ZodRawShape>(shape: T) => z.object({ ...shape, source_type: sourceType.optional() });
+const withSource = <T extends z.ZodRawShape>(shape: T) =>
+  z.object({ ...shape, id: z.number().nullish(), source_type: sourceType.optional() });
 
 export const profileSchema = z.object({
   full_name: str,
@@ -94,6 +95,8 @@ const link = (max: number) =>
   text(max).refine(isSafeLink, "Enter a web address starting with http:// or https://.");
 
 const formSource = z.enum(["resume", "candidate_input"]);
+// Existing row id (null for new items), carried as a hidden value so saves update in place.
+const formId = z.number().nullable();
 const MAX_ITEMS = 100;
 const section = <T extends z.ZodTypeAny>(item: T) => z.array(item).max(MAX_ITEMS, `At most ${MAX_ITEMS} entries.`);
 
@@ -104,12 +107,12 @@ export const profileFormSchema = z.object({
   email: text(254),
   phone: text(50),
   location: text(200),
-  links: section(z.object({ source_type: formSource, label: text(100), url: link(500).min(1, "URL is required.") })),
-  skills: section(z.object({ source_type: formSource, name: required(100, "Skill"), category: text(100) })),
+  links: section(z.object({ id: formId, source_type: formSource, label: text(100), url: link(500).min(1, "URL is required.") })),
+  skills: section(z.object({ id: formId, source_type: formSource, name: required(100, "Skill"), category: text(100) })),
   experience: section(
     z
       .object({
-        source_type: formSource,
+        id: formId, source_type: formSource,
         company: text(200),
         title: text(200),
         location: text(200),
@@ -126,7 +129,7 @@ export const profileFormSchema = z.object({
   education: section(
     z
       .object({
-        source_type: formSource,
+        id: formId, source_type: formSource,
         institution: text(200),
         degree: text(200),
         field_of_study: text(200),
@@ -141,7 +144,7 @@ export const profileFormSchema = z.object({
   ),
   certifications: section(
     z.object({
-      source_type: formSource,
+      id: formId, source_type: formSource,
       name: required(200, "Name"),
       issuer: text(200),
       issue_date: text(50),
@@ -152,7 +155,7 @@ export const profileFormSchema = z.object({
   ),
   projects: section(
     z.object({
-      source_type: formSource,
+      id: formId, source_type: formSource,
       name: required(200, "Name"),
       role: text(200),
       description: text(5000),
@@ -163,7 +166,7 @@ export const profileFormSchema = z.object({
     }),
   ),
   achievements: section(
-    z.object({ source_type: formSource, title: required(300, "Title"), description: text(5000), date: text(50) }),
+    z.object({ id: formId, source_type: formSource, title: required(300, "Title"), description: text(5000), date: text(50) }),
   ),
 });
 
@@ -184,10 +187,10 @@ export function toFormValues(profile: z.infer<typeof profileSchema> | null): z.i
     email: s(p.email),
     phone: s(p.phone),
     location: s(p.location),
-    links: p.links.map((l) => ({ source_type: src(l.source_type), label: s(l.label), url: l.url })),
-    skills: p.skills.map((k) => ({ source_type: src(k.source_type), name: k.name, category: s(k.category) })),
+    links: p.links.map((l) => ({ id: l.id ?? null, source_type: src(l.source_type), label: s(l.label), url: l.url })),
+    skills: p.skills.map((k) => ({ id: k.id ?? null, source_type: src(k.source_type), name: k.name, category: s(k.category) })),
     experience: p.experience.map((e) => ({
-      source_type: src(e.source_type),
+      id: e.id ?? null, source_type: src(e.source_type),
       company: s(e.company),
       title: s(e.title),
       location: s(e.location),
@@ -200,7 +203,7 @@ export function toFormValues(profile: z.infer<typeof profileSchema> | null): z.i
       technologies: commas(e.technologies),
     })),
     education: p.education.map((e) => ({
-      source_type: src(e.source_type),
+      id: e.id ?? null, source_type: src(e.source_type),
       institution: s(e.institution),
       degree: s(e.degree),
       field_of_study: s(e.field_of_study),
@@ -209,7 +212,7 @@ export function toFormValues(profile: z.infer<typeof profileSchema> | null): z.i
       grade: s(e.grade),
     })),
     certifications: p.certifications.map((c) => ({
-      source_type: src(c.source_type),
+      id: c.id ?? null, source_type: src(c.source_type),
       name: c.name,
       issuer: s(c.issuer),
       issue_date: s(c.issue_date),
@@ -218,7 +221,7 @@ export function toFormValues(profile: z.infer<typeof profileSchema> | null): z.i
       url: s(c.url),
     })),
     projects: p.projects.map((x) => ({
-      source_type: src(x.source_type),
+      id: x.id ?? null, source_type: src(x.source_type),
       name: x.name,
       role: s(x.role),
       description: s(x.description),
@@ -228,7 +231,7 @@ export function toFormValues(profile: z.infer<typeof profileSchema> | null): z.i
       end_date: s(x.end_date),
     })),
     achievements: p.achievements.map((a) => ({
-      source_type: src(a.source_type),
+      id: a.id ?? null, source_type: src(a.source_type),
       title: a.title,
       description: s(a.description),
       date: s(a.date),
@@ -258,9 +261,10 @@ export function toPayload(form: z.infer<typeof profileFormSchema>, jobId?: numbe
     email: n(form.email),
     phone: n(form.phone),
     location: n(form.location),
-    links: form.links.map((l) => ({ source_type: l.source_type, label: n(l.label), url: l.url.trim() })),
-    skills: form.skills.map((k) => ({ source_type: k.source_type, name: k.name.trim(), category: n(k.category) })),
+    links: form.links.map((l) => ({ id: l.id, source_type: l.source_type, label: n(l.label), url: l.url.trim() })),
+    skills: form.skills.map((k) => ({ id: k.id, source_type: k.source_type, name: k.name.trim(), category: n(k.category) })),
     experience: form.experience.map((e) => ({
+      id: e.id,
       source_type: e.source_type,
       company: n(e.company),
       title: n(e.title),
@@ -275,6 +279,7 @@ export function toPayload(form: z.infer<typeof profileFormSchema>, jobId?: numbe
       technologies: splitCommas(e.technologies),
     })),
     education: form.education.map((e) => ({
+      id: e.id,
       source_type: e.source_type,
       institution: n(e.institution),
       degree: n(e.degree),
@@ -284,6 +289,7 @@ export function toPayload(form: z.infer<typeof profileFormSchema>, jobId?: numbe
       grade: n(e.grade),
     })),
     certifications: form.certifications.map((c) => ({
+      id: c.id,
       source_type: c.source_type,
       name: c.name.trim(),
       issuer: n(c.issuer),
@@ -293,6 +299,7 @@ export function toPayload(form: z.infer<typeof profileFormSchema>, jobId?: numbe
       url: n(c.url),
     })),
     projects: form.projects.map((x) => ({
+      id: x.id,
       source_type: x.source_type,
       name: x.name.trim(),
       role: n(x.role),
@@ -303,6 +310,7 @@ export function toPayload(form: z.infer<typeof profileFormSchema>, jobId?: numbe
       end_date: n(x.end_date),
     })),
     achievements: form.achievements.map((a) => ({
+      id: a.id,
       source_type: a.source_type,
       title: a.title.trim(),
       description: n(a.description),

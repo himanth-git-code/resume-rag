@@ -84,7 +84,7 @@ describe("profileFormSchema", () => {
 
   it("rejects unsafe links", () => {
     const form = toFormValues(draft);
-    form.links = [{ source_type: "candidate_input", label: "x", url: "javascript:alert(1)" }];
+    form.links = [{ id: null, source_type: "candidate_input", label: "x", url: "javascript:alert(1)" }];
     expect(profileFormSchema.safeParse(form).success).toBe(false);
   });
 });
@@ -110,5 +110,25 @@ describe("flattenServerErrors", () => {
       { path: "experience.1", message: "Add at least a company or a job title." },
       { path: "links.0.url", message: "Enter a web address." },
     ]);
+  });
+});
+
+describe("item ids", () => {
+  it("round-trips existing ids and leaves new items without one", () => {
+    const saved = profileSchema.parse({
+      skills: [{ id: 42, name: "Python", category: null, source_type: "resume" }],
+      experience: [{ id: 7, company: "Acme", source_type: "candidate_input" }],
+    });
+    const form = toFormValues(saved);
+    expect(form.skills[0].id).toBe(42);
+    form.skills.push({ id: null, source_type: "candidate_input", name: "Go", category: "" });
+
+    const payload = toPayload(form);
+    expect(payload.skills.map((k) => k.id)).toEqual([42, null]);
+    expect(payload.experience[0].id).toBe(7);
+  });
+
+  it("treats draft items as new", () => {
+    expect(toFormValues(draft).skills[0].id).toBeNull();
   });
 });

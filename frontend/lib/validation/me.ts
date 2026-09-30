@@ -11,4 +11,9 @@ export const meSchema = z.object({
     latest_job_id: z.number().nullable(),
     has_profile: z.boolean(),
   }),
+  knowledge_base: z.object({
+    status: z.enum(["idle", "indexing", "ready", "failed"]),
+    chunk_count: z.number(),
+    indexed_at: z.string().nullable(),
+  }),
 });

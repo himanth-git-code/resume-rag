@@ -29,7 +29,8 @@ export function RepeatableSection<N extends ProfileSection>({
   renderItem,
 }: Props<N>) {
   const { control, watch } = useFormContext<ProfileFormValues>();
-  const { fields, append, remove, move } = useFieldArray({ control, name });
+  // Items have their own database `id`, so keep RHF's generated React key under a different name.
+  const { fields, append, remove, move } = useFieldArray({ control, name, keyName: "key" });
   const values = watch(name) as ProfileFormValues[N];
 
   return (
@@ -45,7 +46,7 @@ export function RepeatableSection<N extends ProfileSection>({
           const item = values?.[index] as ProfileFormValues[N][number] | undefined;
           const heading = (item && summarize(item)) || `${itemLabel} ${index + 1}`;
           return (
-            <fieldset key={field.id} className="grid gap-4 rounded-lg border p-4">
+            <fieldset key={field.key} className="grid gap-4 rounded-lg border p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <legend className="flex items-center gap-2 text-sm font-medium">
                   {heading}

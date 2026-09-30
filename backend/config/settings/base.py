@@ -211,6 +211,14 @@ AI_MODEL = env("AI_MODEL", default="claude-opus-5")
 AI_REQUEST_TIMEOUT_SECONDS = env.float("AI_REQUEST_TIMEOUT_SECONDS", default=180.0)
 ANTHROPIC_API_KEY = env("ANTHROPIC_API_KEY", default="")
 
+# Embeddings for the knowledge base (see apps/ai). "fake" needs no API key but
+# gives meaningless search results.
+EMBEDDING_PROVIDER = env("EMBEDDING_PROVIDER", default="fake")
+EMBEDDING_MODEL = env("EMBEDDING_MODEL", default="voyage-4")
+# Must match the VectorField size in apps.knowledge_base (changing it needs a migration).
+EMBEDDING_DIMENSIONS = 1024
+VOYAGE_API_KEY = env("VOYAGE_API_KEY", default="")
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,

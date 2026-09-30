@@ -47,6 +47,8 @@ def string_list(max_length=1000):
 
 
 class ItemSerializer(serializers.Serializer):
+    # Existing row to update. Only honoured if it belongs to this profile.
+    id = serializers.IntegerField(required=False, allow_null=True, min_value=1)
     source_type = serializers.ChoiceField(choices=SourceType.choices, required=False, default=SourceType.CANDIDATE_INPUT)
 
 
@@ -140,3 +142,11 @@ class ProfileSerializer(serializers.Serializer):
 class SaveProfileSerializer(ProfileSerializer):
     # The parse job whose draft was reviewed, if any. Ownership is checked in the view.
     job_id = serializers.IntegerField(required=False, allow_null=True)
+
+
+class NoteSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    title = serializers.CharField(max_length=200, trim_whitespace=True)
+    body = serializers.CharField(max_length=10000, trim_whitespace=True)
+    created_at = serializers.DateTimeField(read_only=True)
+    updated_at = serializers.DateTimeField(read_only=True)

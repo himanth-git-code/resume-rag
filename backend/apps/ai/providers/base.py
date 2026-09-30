@@ -31,7 +31,8 @@ class AIProvider(ABC):
     ) -> StructuredResult[SchemaT]:
         """Generate output that validates against `schema`."""
 
-    def embed(self, texts: list[str]) -> list[list[float]]:
+    def embed(self, texts: list[str], *, input_type: str = "document") -> list[list[float]]:
+        """One vector per text. `input_type` is "document" for stored content, "query" for searches."""
         raise NotImplementedError(f"{self.name} does not provide embeddings")
 
     def moderate(self, text: str) -> bool:

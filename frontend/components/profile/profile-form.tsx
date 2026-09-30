@@ -79,7 +79,7 @@ export function ProfileForm({ defaultValues, jobId, onSaved }: Props) {
           title="Experience"
           itemLabel="Role"
           emptyItem={{
-            source_type: NEW,
+            id: null, source_type: NEW,
             company: "",
             title: "",
             location: "",
@@ -131,7 +131,7 @@ export function ProfileForm({ defaultValues, jobId, onSaved }: Props) {
           name="skills"
           title="Skills"
           itemLabel="Skill"
-          emptyItem={{ source_type: NEW, name: "", category: "" }}
+          emptyItem={{ id: null, source_type: NEW, name: "", category: "" }}
           summarize={(k) => k.name}
           renderItem={(i) => (
             <div className="grid gap-4 sm:grid-cols-2">
@@ -146,7 +146,7 @@ export function ProfileForm({ defaultValues, jobId, onSaved }: Props) {
           title="Education"
           itemLabel="Education"
           emptyItem={{
-            source_type: NEW,
+            id: null, source_type: NEW,
             institution: "",
             degree: "",
             field_of_study: "",
@@ -172,7 +172,7 @@ export function ProfileForm({ defaultValues, jobId, onSaved }: Props) {
           title="Projects"
           itemLabel="Project"
           emptyItem={{
-            source_type: NEW,
+            id: null, source_type: NEW,
             name: "",
             role: "",
             description: "",
@@ -200,7 +200,7 @@ export function ProfileForm({ defaultValues, jobId, onSaved }: Props) {
           title="Certifications"
           itemLabel="Certification"
           emptyItem={{
-            source_type: NEW,
+            id: null, source_type: NEW,
             name: "",
             issuer: "",
             issue_date: "",
@@ -225,7 +225,7 @@ export function ProfileForm({ defaultValues, jobId, onSaved }: Props) {
           name="achievements"
           title="Achievements"
           itemLabel="Achievement"
-          emptyItem={{ source_type: NEW, title: "", description: "", date: "" }}
+          emptyItem={{ id: null, source_type: NEW, title: "", description: "", date: "" }}
           summarize={(a) => a.title}
           renderItem={(i) => (
             <div className="grid gap-4 sm:grid-cols-2">
@@ -240,7 +240,7 @@ export function ProfileForm({ defaultValues, jobId, onSaved }: Props) {
           name="links"
           title="Links"
           itemLabel="Link"
-          emptyItem={{ source_type: NEW, label: "", url: "" }}
+          emptyItem={{ id: null, source_type: NEW, label: "", url: "" }}
           summarize={(l) => l.label || l.url}
           renderItem={(i) => (
             <div className="grid gap-4 sm:grid-cols-2">

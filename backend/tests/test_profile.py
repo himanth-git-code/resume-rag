@@ -201,3 +201,55 @@ def test_profile_requires_authentication():
     client = APIClient()
     assert client.get("/api/profile/").status_code == 403
     assert client.put("/api/profile/", profile_payload(), format="json").status_code == 403
+
+
+def test_item_ids_are_stable_across_saves(api):
+    first = api.put("/api/profile/", profile_payload(), format="json").json()
+    role = first["experience"][0]
+    skill_id = first["skills"][0]["id"]
+
+    edited_role = {**role, "title": "Staff Engineer"}
+    new_skill = {"name": "Go"}
+    second = api.put(
+        "/api/profile/",
+        profile_payload(experience=[edited_role], skills=[new_skill, first["skills"][0]]),
+        format="json",
+    ).json()
+
+    assert second["experience"][0]["id"] == role["id"]
+    assert second["experience"][0]["title"] == "Staff Engineer"
+    assert [s["name"] for s in second["skills"]] == ["Go", "Python"]
+    assert second["skills"][1]["id"] == skill_id  # kept and reordered
+    assert second["skills"][0]["id"] != skill_id
+
+
+def test_removed_items_are_deleted(api):
+    first = api.put("/api/profile/", profile_payload(), format="json").json()
+    api.put("/api/profile/", profile_payload(experience=[]), format="json")
+    assert not CandidateExperience.objects.filter(pk=first["experience"][0]["id"]).exists()
+
+
+def test_cannot_update_another_users_items(api, make_user):
+    victim = APIClient()
+    victim.force_authenticate(make_user("victim@example.com"))
+    victim_skill = victim.put("/api/profile/", profile_payload(), format="json").json()["skills"][0]
+
+    api.put("/api/profile/", profile_payload(skills=[{"id": victim_skill["id"], "name": "Hijacked"}]), format="json")
+
+    assert victim.get("/api/profile/").json()["skills"][0]["name"] == "Python"
+    assert CandidateSkill.objects.get(pk=victim_skill["id"]).name == "Python"
+
+
+def test_duplicate_ids_in_payload_create_rather_than_merge(api):
+    first = api.put("/api/profile/", profile_payload(), format="json").json()
+    skill = first["skills"][0]
+    body = api.put(
+        "/api/profile/", profile_payload(skills=[skill, {**skill, "name": "Copy"}]), format="json"
+    ).json()
+    assert [s["name"] for s in body["skills"]] == ["Python", "Copy"]
+    assert len({s["id"] for s in body["skills"]}) == 2
+
+
+def test_draft_items_have_no_ids(api, ready_job):
+    draft = api.get(f"/api/resumes/jobs/{ready_job.pk}/draft/").json()
+    assert all(item["id"] is None for item in draft["skills"] + draft["experience"])

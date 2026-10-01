@@ -7,14 +7,14 @@ from .base import AIProvider, StructuredResult
 __all__ = ["AIProvider", "StructuredResult", "get_embedding_provider", "get_provider"]
 
 
-def get_provider() -> AIProvider:
-    """The configured provider (settings.AI_PROVIDER)."""
+def get_provider(model: str | None = None) -> AIProvider:
+    """The configured provider (settings.AI_PROVIDER), on `model` or settings.AI_MODEL."""
     if settings.AI_PROVIDER == "anthropic":
         from .anthropic import AnthropicProvider
 
         return AnthropicProvider(
             api_key=settings.ANTHROPIC_API_KEY,
-            model=settings.AI_MODEL,
+            model=model or settings.AI_MODEL,
             timeout=settings.AI_REQUEST_TIMEOUT_SECONDS,
         )
     if settings.AI_PROVIDER == "fake":

@@ -90,3 +90,25 @@ def test_client_errors_are_permanent(error):
 def test_missing_api_key_is_a_configuration_error():
     with pytest.raises(AIPermanentError):
         AnthropicProvider(api_key="", model="claude-opus-5", timeout=10)
+
+
+def test_fallback_is_only_requested_for_supported_models():
+    parse = mock.Mock(return_value=response(parsed=ResumeExtraction()))
+    client = mock.Mock()
+    client.beta.messages.parse = parse
+    sonnet = AnthropicProvider(api_key="", model="claude-sonnet-5", timeout=10, client=client)
+
+    sonnet.generate_structured(system="s", prompt="p", schema=ResumeExtraction)
+
+    kwargs = parse.call_args.kwargs
+    assert kwargs["model"] == "claude-sonnet-5"
+    assert "fallbacks" not in kwargs and "betas" not in kwargs
+
+
+def test_get_provider_accepts_a_model_override(settings):
+    from apps.ai.providers import get_provider
+
+    settings.AI_PROVIDER = "anthropic"
+    settings.ANTHROPIC_API_KEY = "test-key"
+    assert get_provider().model == settings.AI_MODEL
+    assert get_provider("claude-sonnet-5").model == "claude-sonnet-5"

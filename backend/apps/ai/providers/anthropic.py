@@ -10,9 +10,17 @@ from .base import AIProvider, SchemaT, StructuredResult
 logger = logging.getLogger(__name__)
 
 # Server-side refusal fallback: if the model declines, the API re-runs the same
-# request on Anthropic's recommended fallback model within the same call.
+# request on Anthropic's recommended fallback model within the same call. Its
+# targets are Opus-class models, so it's only requested for Opus/Fable models.
 FALLBACK_BETA = "server-side-fallback-2026-07-01"
+FALLBACK_MODEL_PREFIXES = ("claude-opus-5", "claude-fable-5")
 MAX_TOKENS = 16000
+
+
+def _fallback_kwargs(model: str) -> dict:
+    if model.startswith(FALLBACK_MODEL_PREFIXES):
+        return {"betas": [FALLBACK_BETA], "fallbacks": "default"}
+    return {}
 
 
 class AnthropicProvider(AIProvider):
@@ -33,8 +41,7 @@ class AnthropicProvider(AIProvider):
                 system=system,
                 messages=[{"role": "user", "content": prompt}],
                 thinking={"type": "adaptive"},
-                betas=[FALLBACK_BETA],
-                fallbacks="default",
+                **_fallback_kwargs(self.model),
             )
         _check_stop_reason(response)
         return "".join(block.text for block in response.content if block.type == "text")
@@ -51,8 +58,7 @@ class AnthropicProvider(AIProvider):
                     messages=[{"role": "user", "content": prompt}],
                     output_format=schema,
                     thinking={"type": "adaptive"},
-                    betas=[FALLBACK_BETA],
-                    fallbacks="default",
+                    **_fallback_kwargs(self.model),
                 )
             except ValidationError as exc:
                 raise AIOutputError("Model output did not match the schema", reason="schema_mismatch") from exc

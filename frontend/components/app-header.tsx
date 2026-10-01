@@ -13,6 +13,8 @@ const NAV = [
   { href: "/profile", label: "Profile" },
   { href: "/notes", label: "Notes" },
   { href: "/questions", label: "Questions" },
+  { href: "/match", label: "Job match" },
+  { href: "/employer-profile", label: "Employer profile" },
 ];
 
 export function AppHeader() {
@@ -27,8 +29,8 @@ export function AppHeader() {
   }
 
   return (
-    <header className="flex items-center justify-between border-b px-6 py-3">
-      <nav className="flex items-center gap-6 text-sm">
+    <header className="flex flex-wrap items-center justify-between gap-3 border-b px-6 py-3">
+      <nav className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
         <Link href="/dashboard" className="font-semibold tracking-tight">
           AI Professional Identity
         </Link>

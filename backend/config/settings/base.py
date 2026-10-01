@@ -113,7 +113,14 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "resume_upload": env("RESUME_UPLOAD_RATE", default="20/hour"),
         "question_generate": env("QUESTION_GENERATE_RATE", default="20/hour"),
+        "public_view": env("PUBLIC_VIEW_RATE", default="120/hour"),
+        "public_chat": env("PUBLIC_CHAT_RATE", default="60/hour"),
+        "public_match": env("PUBLIC_MATCH_RATE", default="10/hour"),
+        "public_poll": env("PUBLIC_POLL_RATE", default="1500/hour"),
     },
+    # Client IP for throttling = the X-Forwarded-For entry added by our outermost
+    # trusted proxy: 1 locally (Next.js), 2 behind the production load balancer.
+    "NUM_PROXIES": env.int("TRUSTED_PROXY_COUNT", default=1),
 }
 
 REDIS_URL = env("REDIS_URL")
@@ -219,6 +226,14 @@ EMBEDDING_MODEL = env("EMBEDDING_MODEL", default="voyage-4")
 # Must match the VectorField size in apps.knowledge_base (changing it needs a migration).
 EMBEDDING_DIMENSIONS = 1024
 VOYAGE_API_KEY = env("VOYAGE_API_KEY", default="")
+
+# Employer-facing AI profile (apps.ai_profile, apps.chatbot).
+CHAT_MODEL = env("CHAT_MODEL", default="claude-sonnet-5")
+CHAT_DAILY_LIMIT_PER_PROFILE = env.int("CHAT_DAILY_LIMIT_PER_PROFILE", default=300)
+MATCH_DAILY_LIMIT_PER_PROFILE = env.int("MATCH_DAILY_LIMIT_PER_PROFILE", default=50)
+# Cloudflare Turnstile bot protection on public endpoints; off when unset.
+TURNSTILE_SITE_KEY = env("TURNSTILE_SITE_KEY", default="")
+TURNSTILE_SECRET_KEY = env("TURNSTILE_SECRET_KEY", default="")
 
 LOGGING = {
     "version": 1,

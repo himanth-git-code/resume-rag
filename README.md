@@ -147,6 +147,28 @@ Embeddings use `EMBEDDING_PROVIDER` / `EMBEDDING_MODEL` / `VOYAGE_API_KEY` (Voya
   - `GET /api/questions/generations/latest/`
 - **Cost:** a full run makes about 1 + roles + projects + 1 calls on `AI_MODEL`.
 
+## Employer AI profile, chatbot and job matching
+
+Candidates share a **secret link** (`/p/<token>`, no employer account) from **Employer profile**.
+
+- **Link controls:** turn the link on or off, regenerate it (the old one stops working immediately) and set an optional expiry. Unknown, disabled and expired links return the same 404.
+- **Visible sections:** the candidate picks which sections show. Contact details and notes are off by default. Hidden sections are left off the page and are never used by the chatbot or matcher.
+- **Chatbot** (`apps.chatbot`):
+  - Employer questions are answered in Celery and the page polls for the reply.
+  - Evidence comes from the candidate's approved, visible profile, built from Postgres (narrowed by pgvector search for large profiles) and always scoped to that one candidate.
+  - Answers must cite evidence refs. An uncited "answer" becomes "I don't see that in the candidate's profile", and personal or protected questions are declined.
+  - Candidates can read every conversation.
+- **Job matching** (`apps.ai_profile.matching`, SPEC §10A):
+  - The model extracts requirements and judges each one met, partial or no evidence, with cited profile items. A verdict without valid evidence is downgraded.
+  - The **score, strengths and gaps are computed in code**. "Not found in the candidate's profile" is never phrased as a lack.
+  - The job description is never stored or logged, only its hash. Identical requests against an unchanged profile reuse the report.
+  - Candidates can also self-check at `/match` (using all of their own data), and see employer-run matches in their history.
+- **Abuse controls:**
+  - Per-IP rate limits (`PUBLIC_*_RATE`; the client IP comes from `X-Forwarded-For` using `TRUSTED_PROXY_COUNT`), plus daily per-candidate caps, and per-conversation question limits.
+  - Optional Cloudflare Turnstile (`TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY`).
+  - Access events are logged with salted IP hashes, never raw IPs.
+- **Model:** chat and matching use `CHAT_MODEL` (default `claude-sonnet-5`). The server-side refusal fallback is only requested for Opus/Fable models.
+
 ## AI provider configuration
 
 All AI calls go through `apps.ai.providers.get_provider()` (the `AIProvider` interface in `backend/apps/ai/`), so business logic never imports a vendor SDK.
@@ -159,6 +181,7 @@ All AI calls go through `apps.ai.providers.get_provider()` (the `AIProvider` int
 | `EMBEDDING_PROVIDER` | `voyage` for real embeddings; `fake` needs no key |
 | `EMBEDDING_MODEL` | Voyage model, default `voyage-4` (1024 dimensions) |
 | `VOYAGE_API_KEY` | Required when `EMBEDDING_PROVIDER=voyage` |
+| `CHAT_MODEL` | Model for the employer chatbot and job matching, default `claude-sonnet-5` |
 
 The Anthropic provider uses structured outputs (a Pydantic schema) with adaptive thinking. It also enables the API's server-side refusal fallback. Resume text is never logged; only job IDs, token counts and error types are.
 

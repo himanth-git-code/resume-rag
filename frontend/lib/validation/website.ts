@@ -33,7 +33,9 @@ export const websiteSchema = z.object({
 });
 
 export const catalogSchema = z.object({
-  templates: z.array(z.object({ key: z.string(), name: z.string(), description: z.string(), sections: z.array(z.string()) })),
+  templates: z.array(
+    z.object({ key: z.string(), name: z.string(), description: z.string(), sections: z.array(z.string()), premium: z.boolean() }),
+  ),
   sections: z.record(z.string(), z.string()),
   palettes: z.array(z.object({ key: z.string(), name: z.string() })),
   modes: z.array(z.string()),

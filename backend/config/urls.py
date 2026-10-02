@@ -12,6 +12,7 @@ urlpatterns = [
     path("api/", include("apps.ai_profile.urls")),
     path("api/", include("apps.chatbot.urls")),
     path("api/", include("apps.websites.urls")),
+    path("api/", include("apps.payments.urls")),
     # Headless auth API for the SPA (login, signup, session, social redirect).
     path("_allauth/", include("allauth.headless.urls")),
     # Browser-facing allauth routes; needed for the OAuth provider callback.

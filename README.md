@@ -185,7 +185,7 @@ From **Website** (`/website`) candidates choose a web address (`/portfolio/<name
 - **Embedded widgets:** the assistant and job matching appear only when both the site's toggle and the candidate's global switch (Employer profile) are on.
   - They use only the sections the published site shows.
   - Their conversations and matches are labelled "Website" in the candidate's history, and can't be continued through the employer link.
-- **Phase 5:** `WebsiteService.publish_problems` is where the `website_publish` / `premium_templates` entitlements will be enforced.
+- **Paid features:** publishing needs Pro (`website_publish`), and publishing with the Executive, Technical or Creative template also needs `premium_templates`. Both are checked in `WebsiteService.publish_problems`.
 
 ## AI provider configuration
 
@@ -205,7 +205,25 @@ The Anthropic provider uses structured outputs (a Pydantic schema) with adaptive
 
 ## Payment provider configuration
 
-TBD. This lands in Phase 5, with Razorpay behind a provider abstraction and webhook-driven entitlements.
+One-time payments only, no subscriptions (`apps.payments`, SPEC §14). There's a single **Pro** product: ₹499, seeded by a migration and editable in the database. It grants the `website_publish` and `premium_templates` entitlements. Everything else is free, and every template can be edited and previewed for free.
+
+- **Paid access comes only from `Entitlement` rows.** They're created only by verified webhooks or by server-to-server reconciliation, never by the browser. Razorpay Checkout's success callback only starts status polling.
+- **Webhooks** go to `POST /api/payments/webhooks/razorpay/`:
+  - The `X-Razorpay-Signature` HMAC-SHA256 is verified over the raw body.
+  - Delivery is de-duplicated by `X-Razorpay-Event-Id`, and events are processed in a transaction.
+  - The amount and currency must match the order.
+  - A capture always wins over a late `payment.failed`.
+  - A full `refund.processed` revokes the entitlements and unpublishes the site. Partial refunds keep access.
+- **Reconciliation:** while a payment is still awaiting confirmation, the status endpoint asks Razorpay for the order's payments, at most every 15 seconds per payment. That covers delayed webhooks.
+- **Payment states:** pending → initiated → successful / failed / cancelled, plus refunded.
+
+**Razorpay setup:**
+
+1. In the Razorpay dashboard (start in Test mode), create API keys and set `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET`.
+2. Add a webhook to `https://<your-host>/api/payments/webhooks/razorpay/` with a secret (`RAZORPAY_WEBHOOK_SECRET`) and the events `payment.captured`, `order.paid`, `payment.failed` and `refund.processed`.
+3. Set `PAYMENT_PROVIDER=razorpay`. For local testing with real test keys, expose the app through a tunnel (for example `ngrok http 3000`) and use that URL for the webhook. Reconciliation also works without the webhook.
+
+**Local development:** `PAYMENT_PROVIDER=fake` (the default) needs no keys. The Upgrade page offers "Simulate success/failure", which runs the real webhook-processing path with a locally signed event. The simulate endpoint returns 404 unless `DEBUG` is on and the provider is `fake`.
 
 ## Deployment notes
 

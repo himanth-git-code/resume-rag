@@ -16,6 +16,7 @@ const NAV = [
   { href: "/match", label: "Job match" },
   { href: "/employer-profile", label: "Employer profile" },
   { href: "/website", label: "Website" },
+  { href: "/billing", label: "Upgrade" },
 ];
 
 export function AppHeader() {

@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowDown, ArrowUp } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -99,7 +100,10 @@ export function TemplateCard({ site, save, busy, catalog }: CardProps & { catalo
               site.template === t.key && "border-primary ring-2 ring-primary/30",
             )}
           >
-            <span className="font-medium">{t.name}</span>
+            <span className="flex items-center gap-2 font-medium">
+              {t.name}
+              {t.premium && <Badge variant="outline">Pro</Badge>}
+            </span>
             <span className="text-sm text-muted-foreground">{t.description}</span>
           </button>
         ))}
@@ -439,11 +443,20 @@ export function PublishCard({ site, save, busy }: CardProps) {
         )}
 
         {site.publish_problems.length > 0 && (
-          <ul className="list-disc pl-5 text-sm text-muted-foreground">
-            {site.publish_problems.map((p) => (
-              <li key={p}>{p}</li>
-            ))}
-          </ul>
+          <div className="grid gap-2">
+            <ul className="list-disc pl-5 text-sm text-muted-foreground">
+              {site.publish_problems.map((p) => (
+                <li key={p}>{p}</li>
+              ))}
+            </ul>
+            {site.publish_problems.some((p) => p.includes("Pro")) && (
+              <div>
+                <Button asChild size="sm">
+                  <Link href="/billing">Unlock Pro</Link>
+                </Button>
+              </div>
+            )}
+          </div>
         )}
 
         <div className="grid gap-3 rounded-lg border p-3">

@@ -11,7 +11,7 @@ from apps.ai_profile.public import ip_hash
 from apps.candidates.models import CandidateProfile
 from apps.candidates.services import CandidateProfileService
 
-from .catalog import RESERVED_SLUGS, SECTIONS, SLUG_PATTERN, TEMPLATES, default_sections
+from .catalog import PREMIUM_TEMPLATES, RESERVED_SLUGS, SECTIONS, SLUG_PATTERN, TEMPLATES, default_sections
 from .models import PreviewToken, Website, WebsiteEvent, WebsiteVersion
 
 PREVIEW_TTL = timedelta(minutes=30)
@@ -245,11 +245,16 @@ class WebsiteService:
 
     @staticmethod
     def publish_problems(website: Website) -> list[str]:
-        """Why the site can't be published yet (empty when it can).
+        """Why the site can't be published yet (empty when it can). Paid checks go through entitlements."""
+        from apps.payments.models import Entitlement
+        from apps.payments.services import EntitlementService
 
-        Phase 5 adds the `website_publish` entitlement check here.
-        """
         problems = []
+        codes = EntitlementService.active_codes(website.user)
+        if Entitlement.Code.WEBSITE_PUBLISH not in codes:
+            problems.append("Unlock Pro to publish your site.")
+        elif website.template in PREMIUM_TEMPLATES and Entitlement.Code.PREMIUM_TEMPLATES not in codes:
+            problems.append("This template is part of Pro.")
         if not CandidateProfile.objects.filter(user=website.user).exists():
             problems.append("Save your profile first.")
         if not website.slug:

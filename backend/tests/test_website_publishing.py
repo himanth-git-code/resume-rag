@@ -37,9 +37,16 @@ def save_profile(user, data):
         return CandidateProfileService.save(user, data)
 
 
+def grant_pro(user):
+    from apps.payments.services import EntitlementService
+
+    EntitlementService.grant(user, ["website_publish", "premium_templates"], None)
+
+
 @pytest.fixture
 def site(api, user):
     save_profile(user, PROFILE)
+    grant_pro(user)
     api.put("/api/website/", {"slug": "jane-doe", "show_matching": True}, format="json")
     return Website.objects.get(user=user)
 

@@ -49,6 +49,8 @@ TEMPLATES = {
     },
 }
 DEFAULT_TEMPLATE = "modern"
+# Publishing with these needs the `premium_templates` entitlement (editing and preview are free).
+PREMIUM_TEMPLATES = {"executive", "technical", "creative"}
 
 PALETTES = {
     "slate": "Slate",
@@ -80,7 +82,7 @@ def default_sections(template: str) -> list[dict]:
 
 def catalog() -> dict:
     return {
-        "templates": [{"key": k, **v} for k, v in TEMPLATES.items()],
+        "templates": [{"key": k, **v, "premium": k in PREMIUM_TEMPLATES} for k, v in TEMPLATES.items()],
         "sections": SECTIONS,
         "palettes": [{"key": k, "name": v} for k, v in PALETTES.items()],
         "modes": list(MODES),

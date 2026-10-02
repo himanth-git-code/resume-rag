@@ -4,6 +4,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from apps.knowledge_base.services import KnowledgeBaseService
+from apps.payments.services import EntitlementService
 from apps.resume_parser.models import ResumeParseJob
 from apps.resume_parser.services import ResumeProcessingService
 
@@ -28,6 +29,7 @@ def me(request):
             "email": user.email,
             "dashboard": CandidateDashboardService.get_state(user),
             "knowledge_base": KnowledgeBaseService.state_for(user),
+            "entitlements": sorted(EntitlementService.active_codes(user)),
         }
     )
 

@@ -118,6 +118,7 @@ REST_FRAMEWORK = {
         "public_match": env("PUBLIC_MATCH_RATE", default="10/hour"),
         "public_poll": env("PUBLIC_POLL_RATE", default="1500/hour"),
         "website_preview": env("WEBSITE_PREVIEW_RATE", default="60/hour"),
+        "checkout": env("CHECKOUT_RATE", default="20/hour"),
     },
     # Client IP for throttling = the X-Forwarded-For entry added by our outermost
     # trusted proxy: 1 locally (Next.js), 2 behind the production load balancer.
@@ -232,6 +233,11 @@ VOYAGE_API_KEY = env("VOYAGE_API_KEY", default="")
 CHAT_MODEL = env("CHAT_MODEL", default="claude-sonnet-5")
 CHAT_DAILY_LIMIT_PER_PROFILE = env.int("CHAT_DAILY_LIMIT_PER_PROFILE", default=300)
 MATCH_DAILY_LIMIT_PER_PROFILE = env.int("MATCH_DAILY_LIMIT_PER_PROFILE", default=50)
+# Payments (apps.payments). "fake" needs no keys and enables the dev-only simulate endpoint.
+PAYMENT_PROVIDER = env("PAYMENT_PROVIDER", default="fake")
+RAZORPAY_KEY_ID = env("RAZORPAY_KEY_ID", default="")
+RAZORPAY_KEY_SECRET = env("RAZORPAY_KEY_SECRET", default="")
+RAZORPAY_WEBHOOK_SECRET = env("RAZORPAY_WEBHOOK_SECRET", default="")
 # Cloudflare Turnstile bot protection on public endpoints; off when unset.
 TURNSTILE_SITE_KEY = env("TURNSTILE_SITE_KEY", default="")
 TURNSTILE_SECRET_KEY = env("TURNSTILE_SECRET_KEY", default="")

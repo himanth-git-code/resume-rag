@@ -16,4 +16,5 @@ export const meSchema = z.object({
     chunk_count: z.number(),
     indexed_at: z.string().nullable(),
   }),
+  entitlements: z.array(z.string()).default([]),
 });

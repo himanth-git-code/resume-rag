@@ -169,6 +169,24 @@ Candidates share a **secret link** (`/p/<token>`, no employer account) from **Em
   - Access events are logged with salted IP hashes, never raw IPs.
 - **Model:** chat and matching use `CHAT_MODEL` (default `claude-sonnet-5`). The server-side refusal fallback is only requested for Opus/Fable models.
 
+## Personal website
+
+From **Website** (`/website`) candidates choose a web address (`/portfolio/<name>`), a template, a theme and sections, then preview privately and publish.
+
+- **Templates:** Executive, Modern Professional, Technical, Creative and Minimal live in `frontend/components/website-templates/`.
+  - They are React Server Components, so the HTML is rendered on the server and template code never ships to the browser.
+  - They render only from `SiteData`, built by `WebsiteService.build_site_data`. The LLM never writes HTML or CSS.
+  - Themes are 6 palettes × light/dark × 4 font pairings.
+- **Content:** everything comes from the approved profile, plus site-only overrides (tagline, intro, section titles, featured projects and achievements, and leadership highlights chosen from real experience bullets).
+- **"About me" bio:** written by the candidate or drafted by AI from the profile. An AI draft is never published until the candidate edits and saves it, which counts as approval (SPEC §23).
+- **Preview** (`/portfolio-preview/<token>`): links are authenticated to create, random, expire after 30 minutes, are `noindex`, watermarked, block right-click, save and print shortcuts, and are audited. This is a deterrent, not DRM.
+- **Publishing:** stores a frozen `WebsiteVersion` snapshot, and the public site serves only that snapshot. Later profile or website edits stay private until the candidate republishes, and the editor flags unpublished changes. Unpublishing or renaming makes the old address 404.
+- **Public site** (`/portfolio/<name>`): server-rendered with SEO metadata. Set `SITE_URL` for canonical URLs. Views are audited once per visitor per hour, with a hashed IP.
+- **Embedded widgets:** the assistant and job matching appear only when both the site's toggle and the candidate's global switch (Employer profile) are on.
+  - They use only the sections the published site shows.
+  - Their conversations and matches are labelled "Website" in the candidate's history, and can't be continued through the employer link.
+- **Phase 5:** `WebsiteService.publish_problems` is where the `website_publish` / `premium_templates` entitlements will be enforced.
+
 ## AI provider configuration
 
 All AI calls go through `apps.ai.providers.get_provider()` (the `AIProvider` interface in `backend/apps/ai/`), so business logic never imports a vendor SDK.

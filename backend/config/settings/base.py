@@ -117,6 +117,7 @@ REST_FRAMEWORK = {
         "public_chat": env("PUBLIC_CHAT_RATE", default="60/hour"),
         "public_match": env("PUBLIC_MATCH_RATE", default="10/hour"),
         "public_poll": env("PUBLIC_POLL_RATE", default="1500/hour"),
+        "website_preview": env("WEBSITE_PREVIEW_RATE", default="60/hour"),
     },
     # Client IP for throttling = the X-Forwarded-For entry added by our outermost
     # trusted proxy: 1 locally (Next.js), 2 behind the production load balancer.

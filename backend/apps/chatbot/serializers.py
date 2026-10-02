@@ -21,7 +21,7 @@ class SessionSummarySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = EmployerChatSession
-        fields = ["id", "question_count", "first_question", "created_at", "last_activity"]
+        fields = ["id", "channel", "question_count", "first_question", "created_at", "last_activity"]
 
     def get_first_question(self, session):
         first = session.messages.filter(role=EmployerChatMessage.Role.USER).first()

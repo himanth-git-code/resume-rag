@@ -49,7 +49,10 @@ export function Conversations() {
               aria-expanded={open === s.id}
               onClick={() => setOpen(open === s.id ? null : s.id)}
             >
-              <span className="text-sm font-medium">&ldquo;{s.first_question}&rdquo;</span>
+              <span className="text-sm font-medium">
+                &ldquo;{s.first_question}&rdquo;
+                {s.channel === "website" && <span className="ml-2 text-xs font-normal text-muted-foreground">via your website</span>}
+              </span>
               <span className="text-xs text-muted-foreground">
                 {s.question_count} question{s.question_count === 1 ? "" : "s"} ·{" "}
                 {new Date(s.last_activity).toLocaleString()}

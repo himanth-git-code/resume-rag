@@ -68,7 +68,7 @@ export default function MatchPage() {
                 >
                   <span className="font-medium">{m.job_title || "Untitled job"}</span>
                   <span className="flex items-center gap-2 text-muted-foreground">
-                    <Badge variant="outline">{m.source === "candidate_self" ? "You" : "Employer"}</Badge>
+                    <Badge variant="outline">{m.source === "candidate_self" ? "You" : m.source === "website" ? "Website" : "Employer"}</Badge>
                     {m.status === "done" ? `${m.score ?? "—"}%` : m.status}
                     <span>{new Date(m.created_at).toLocaleDateString()}</span>
                   </span>

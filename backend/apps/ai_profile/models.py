@@ -66,6 +66,7 @@ class JobMatchRequest(models.Model):
 
     class Source(models.TextChoices):
         EMPLOYER_PROFILE = "employer_profile", "Employer"
+        WEBSITE = "website", "Website visitor"
         CANDIDATE_SELF = "candidate_self", "Self-check"
 
     class Status(models.TextChoices):
@@ -79,6 +80,8 @@ class JobMatchRequest(models.Model):
     source = models.CharField(max_length=20, choices=Source.choices)
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING)
     jd_hash = models.CharField(max_length=64)
+    # Source types the match may use when they differ from the employer profile's (website matches).
+    source_types = models.JSONField(null=True, blank=True)
     # Fingerprint of the profile data the match may use; a change invalidates cached reports.
     profile_fingerprint = models.CharField(max_length=64)
     ip_hash = models.CharField(max_length=64, blank=True)

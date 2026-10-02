@@ -5,7 +5,7 @@ export const MAX_JD_CHARS = 15_000;
 
 export const matchSchema = z.object({
   id: z.string(),
-  source: z.enum(["employer_profile", "candidate_self"]),
+  source: z.enum(["employer_profile", "website", "candidate_self"]),
   status: z.enum(["pending", "running", "done", "failed"]),
   job_title: z.string(),
   score: z.number().nullable(),

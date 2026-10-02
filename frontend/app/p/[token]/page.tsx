@@ -33,14 +33,14 @@ export default function PublicProfilePage({ params }: { params: Promise<{ token:
       <ProfileView profile={data.profile} />
       {data.chatbot_enabled && (
         <ChatPanel
-          token={token}
+          apiBase={`/public/p/${encodeURIComponent(token)}`}
           name={data.profile.full_name || "this candidate"}
           turnstileSiteKey={data.turnstile_site_key}
         />
       )}
       {data.matching_enabled && (
         <MatchPanel
-          token={token}
+          apiBase={`/public/p/${encodeURIComponent(token)}`}
           name={data.profile.full_name || "this candidate"}
           turnstileSiteKey={data.turnstile_site_key}
         />

@@ -9,8 +9,18 @@ def new_session_id() -> str:
     return secrets.token_urlsafe(16)
 
 
+class Channel(models.TextChoices):
+    EMPLOYER_PROFILE = "employer_profile", "Employer profile"
+    WEBSITE = "website", "Website"
+
+
 class EmployerChatSession(models.Model):
     profile = models.ForeignKey("ai_profile.EmployerProfile", on_delete=models.CASCADE, related_name="chat_sessions")
+    # Where the conversation happens; a session can only be continued on its own channel.
+    channel = models.CharField(max_length=20, choices=Channel.choices, default=Channel.EMPLOYER_PROFILE)
+    # Knowledge-base source types the assistant may use, frozen when the session starts
+    # (null: follow the employer profile's visible sections).
+    source_types = models.JSONField(null=True, blank=True)
     # Random id held by the employer's browser; never a sequential pk.
     public_id = models.CharField(max_length=32, unique=True, default=new_session_id)
     ip_hash = models.CharField(max_length=64)

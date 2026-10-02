@@ -52,13 +52,16 @@ def jd_hash(job_description: str) -> str:
     return hashlib.sha256(normalised.encode()).hexdigest()
 
 
-def source_types_for(profile: EmployerProfile, source: str) -> list[str]:
-    # A self-check is private, so it may use everything; employers see only visible sections.
+def source_types_for(profile: EmployerProfile, source: str, explicit: list[str] | None = None) -> list[str]:
+    # A self-check is private, so it may use everything; employers see only visible sections;
+    # website visitors see only what the published website shows (passed explicitly).
+    if explicit is not None:
+        return explicit
     return ALL_SOURCE_TYPES if source == Source.CANDIDATE_SELF else EmployerProfileService.visible_source_types(profile)
 
 
-def fingerprint(profile: EmployerProfile, source: str) -> str:
-    allowed = set(source_types_for(profile, source))
+def fingerprint(profile: EmployerProfile, source: str, explicit: list[str] | None = None) -> str:
+    allowed = set(source_types_for(profile, source, explicit))
     parts = sorted(f"{c.key}:{c.content_hash}" for c in build_chunks(profile.user) if c.source_type in allowed)
     return hashlib.sha256("|".join(parts).encode()).hexdigest()
 
@@ -81,7 +84,9 @@ def summarise(requirements: list[dict]) -> dict:
 class JobMatchService:
     @staticmethod
     @transaction.atomic
-    def request(profile: EmployerProfile, job_description: str, *, source: str, request=None) -> JobMatchRequest:
+    def request(
+        profile: EmployerProfile, job_description: str, *, source: str, request=None, source_types: list[str] | None = None
+    ) -> JobMatchRequest:
         """Validate, reuse a cached report if one applies, or queue a new match."""
         from .tasks import run_job_match
 
@@ -91,17 +96,19 @@ class JobMatchService:
         if len(text) > MAX_JD_CHARS:
             raise MatchError("too_long", f"Job descriptions can be at most {MAX_JD_CHARS:,} characters.")
 
-        if source == Source.EMPLOYER_PROFILE:
+        if source != Source.CANDIDATE_SELF:
             today = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
-            if profile.matches.filter(source=source, created_at__gte=today).count() >= settings.MATCH_DAILY_LIMIT_PER_PROFILE:
+            public = profile.matches.exclude(source=Source.CANDIDATE_SELF).filter(created_at__gte=today)
+            if public.count() >= settings.MATCH_DAILY_LIMIT_PER_PROFILE:
                 raise MatchError("daily_limit", "Job matching is unavailable for the rest of today.", status=429)
             if request is not None:
                 EmployerProfileService.log_event(profile, ProfileAccessEvent.Kind.MATCH, request)
 
-        digest, fp = jd_hash(text), fingerprint(profile, source)
+        digest, fp = jd_hash(text), fingerprint(profile, source, source_types)
         match = JobMatchRequest.objects.create(
             profile=profile,
             source=source,
+            source_types=source_types,
             jd_hash=digest,
             profile_fingerprint=fp,
             ip_hash=ip_hash(request) if request is not None else "",
@@ -149,7 +156,7 @@ class JobMatchService:
         evidence = EmployerProfileService.evidence(
             match.profile,
             [r.text for r in requirements],
-            source_types=source_types_for(match.profile, match.source),
+            source_types=source_types_for(match.profile, match.source, match.source_types),
             k=EVIDENCE_PER_REQUIREMENT,
         )
         by_key = {c.key: c for c in evidence}

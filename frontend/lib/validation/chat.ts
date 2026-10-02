@@ -19,6 +19,7 @@ export const chatErrorSchema = z.object({ code: z.string(), detail: z.string() }
 
 export const chatSessionSummarySchema = z.object({
   id: z.string(),
+  channel: z.enum(["employer_profile", "website"]).default("employer_profile"),
   question_count: z.number(),
   first_question: z.string(),
   created_at: z.string(),

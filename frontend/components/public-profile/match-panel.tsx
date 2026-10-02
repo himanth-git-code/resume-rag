@@ -9,11 +9,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { matchErrorMessage, usePublicMatch, useStartPublicMatch } from "@/lib/api/match";
 
-export function MatchPanel({ token, name, turnstileSiteKey }: { token: string; name: string; turnstileSiteKey: string | null }) {
+/** `apiBase`: "/public/p/<token>" (employer profile) or "/public/sites/<slug>" (website). */
+export function MatchPanel({ apiBase, name, turnstileSiteKey }: { apiBase: string; name: string; turnstileSiteKey: string | null }) {
   const [matchId, setMatchId] = useState<string | null>(null);
   const [botToken, setBotToken] = useState<string | null>(null);
-  const start = useStartPublicMatch(token);
-  const match = usePublicMatch(token, matchId);
+  const start = useStartPublicMatch(apiBase);
+  const match = usePublicMatch(apiBase, matchId);
 
   return (
     <Card>

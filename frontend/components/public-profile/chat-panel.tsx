@@ -12,8 +12,9 @@ import { MAX_QUESTION_CHARS, sourcesLine } from "@/lib/validation/chat";
 
 const SUGGESTIONS = ["What is their most recent role?", "Which databases have they used?", "Have they led a team?"];
 
-export function ChatPanel({ token, name, turnstileSiteKey }: { token: string; name: string; turnstileSiteKey: string | null }) {
-  const { sessionId, transcript, send, reset } = usePublicChat(token);
+/** `apiBase`: "/public/p/<token>" (employer profile) or "/public/sites/<slug>" (website). */
+export function ChatPanel({ apiBase, name, turnstileSiteKey }: { apiBase: string; name: string; turnstileSiteKey: string | null }) {
+  const { sessionId, transcript, send, reset } = usePublicChat(apiBase);
   const [draft, setDraft] = useState("");
   const [botToken, setBotToken] = useState<string | null>(null);
   const [error, setError] = useState<{ code: string; message: string } | null>(null);

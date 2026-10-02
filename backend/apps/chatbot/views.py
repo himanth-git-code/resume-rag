@@ -8,7 +8,7 @@ from apps.ai_profile.public import PublicChatThrottle, PublicPollThrottle
 from apps.ai_profile.services import EmployerProfileService
 from apps.ai_profile.views import public_endpoint, resolve_or_404
 
-from .models import EmployerChatSession
+from .models import Channel, EmployerChatSession
 from .serializers import AskSerializer, MessageSerializer, SessionSummarySerializer
 from .services import ChatError, EmployerChatService
 
@@ -47,7 +47,9 @@ def ask(request, token):
 @public_endpoint(PublicPollThrottle)
 def transcript(request, token, session_id):
     profile = _chat_profile(token)
-    session = EmployerChatSession.objects.filter(profile=profile, public_id=session_id).first()
+    session = EmployerChatSession.objects.filter(
+        profile=profile, public_id=session_id, channel=Channel.EMPLOYER_PROFILE
+    ).first()
     if session is None:
         raise Http404
     return Response(

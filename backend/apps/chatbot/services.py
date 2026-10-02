@@ -13,7 +13,7 @@ from apps.ai_profile.public import ip_hash, verify_turnstile
 from apps.ai_profile.services import EmployerProfileService
 from apps.knowledge_base.chunking import ChunkSpec
 
-from .models import EmployerChatMessage, EmployerChatSession
+from .models import Channel, EmployerChatMessage, EmployerChatSession
 from .prompts import CHAT_SYSTEM, chat_prompt
 from .schemas import ChatAnswer
 
@@ -46,13 +46,23 @@ def _label(chunk: ChunkSpec) -> str:
 
 class EmployerChatService:
     @staticmethod
-    def evidence(profile: EmployerProfile, question: str) -> list[ChunkSpec]:
-        """Visible, approved profile data for `question`. Hidden sections never appear."""
-        return EmployerProfileService.evidence(profile, [question])
+    def evidence(profile: EmployerProfile, question: str, source_types: list[str] | None = None) -> list[ChunkSpec]:
+        """Approved profile data for `question`, limited to `source_types`
+        (default: the employer profile's visible sections). Hidden sections never appear."""
+        return EmployerProfileService.evidence(profile, [question], source_types=source_types)
 
     @staticmethod
     @transaction.atomic
-    def ask(profile: EmployerProfile, *, question: str, session_id: str | None, request, turnstile_token=None):
+    def ask(
+        profile: EmployerProfile,
+        *,
+        question: str,
+        session_id: str | None,
+        request,
+        turnstile_token=None,
+        channel: str = Channel.EMPLOYER_PROFILE,
+        source_types: list[str] | None = None,
+    ):
         """Record an employer question and queue the answer. Returns (session, [user_msg, assistant_msg])."""
         from .tasks import answer_message
 
@@ -64,14 +74,18 @@ class EmployerChatService:
 
         if session_id:
             session = (
-                EmployerChatSession.objects.select_for_update().filter(profile=profile, public_id=session_id).first()
+                EmployerChatSession.objects.select_for_update()
+                .filter(profile=profile, public_id=session_id, channel=channel)
+                .first()
             )
             if session is None:
                 raise ChatError("no_session", "This conversation has ended. Start a new one.", status=404)
         else:
             if not verify_turnstile(turnstile_token, request):
                 raise ChatError("bot_check", "Please complete the verification and try again.", status=403)
-            session = EmployerChatSession.objects.create(profile=profile, ip_hash=ip_hash(request))
+            session = EmployerChatSession.objects.create(
+                profile=profile, ip_hash=ip_hash(request), channel=channel, source_types=source_types
+            )
             EmployerProfileService.log_event(profile, ProfileAccessEvent.Kind.CHAT_SESSION, request)
 
         if session.question_count >= MAX_QUESTIONS_PER_SESSION:
@@ -121,7 +135,9 @@ class EmployerChatService:
 
         try:
             # Evidence may call the embeddings service (large profiles), so it shares the AI error handling.
-            evidence = EmployerChatService.evidence(profile, f"{previous_question}\n{question_msg.content}".strip())
+            evidence = EmployerChatService.evidence(
+                profile, f"{previous_question}\n{question_msg.content}".strip(), session.source_types
+            )
             result = get_provider(settings.CHAT_MODEL).generate_structured(
                 system=CHAT_SYSTEM,
                 prompt=chat_prompt(evidence=evidence, history=history, question=question_msg.content),

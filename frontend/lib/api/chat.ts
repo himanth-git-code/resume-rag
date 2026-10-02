@@ -9,42 +9,45 @@ import {
   chatTranscriptSchema,
 } from "@/lib/validation/chat";
 
-const storageKey = (token: string) => `chat-session:${token}`;
+const storageKey = (base: string) => `chat-session:${base}`;
 
-function readSession(token: string): string | null {
+function readSession(base: string): string | null {
   try {
-    return sessionStorage.getItem(storageKey(token));
+    return sessionStorage.getItem(storageKey(base));
   } catch {
     return null;
   }
 }
 
-function writeSession(token: string, id: string | null) {
+function writeSession(base: string, id: string | null) {
   try {
-    if (id) sessionStorage.setItem(storageKey(token), id);
-    else sessionStorage.removeItem(storageKey(token));
+    if (id) sessionStorage.setItem(storageKey(base), id);
+    else sessionStorage.removeItem(storageKey(base));
   } catch {
     // Storage unavailable (private mode etc.): the chat still works for this page view.
   }
 }
 
-/** Public employer chat on /p/[token]: one conversation per browser tab, polled while an answer is pending. */
-export function usePublicChat(token: string) {
+/**
+ * Public chat (employer profile `/public/p/<token>` or website `/public/sites/<slug>`):
+ * one conversation per browser tab, polled while an answer is pending.
+ */
+export function usePublicChat(base: string) {
   const queryClient = useQueryClient();
   const [sessionId, setSessionId] = useState<string | null>(() =>
-    typeof window === "undefined" ? null : readSession(token),
+    typeof window === "undefined" ? null : readSession(base),
   );
-  const key = ["public-chat", token, sessionId];
+  const key = ["public-chat", base, sessionId];
 
   const transcript = useQuery({
     queryKey: key,
     enabled: sessionId !== null,
     queryFn: async () => {
       try {
-        return await apiGet(`/public/p/${encodeURIComponent(token)}/chat/${encodeURIComponent(sessionId!)}`, chatTranscriptSchema);
+        return await apiGet(`${base}/chat/${encodeURIComponent(sessionId!)}`, chatTranscriptSchema);
       } catch (error) {
         if (error instanceof ApiError && error.status === 404) {
-          writeSession(token, null);
+          writeSession(base, null);
           setSessionId(null);
           return null;
         }
@@ -56,14 +59,14 @@ export function usePublicChat(token: string) {
 
   const send = useMutation({
     mutationFn: (body: { message: string; turnstile_token?: string | null }) =>
-      apiSend("POST", `/public/p/${encodeURIComponent(token)}/chat`, chatTranscriptSchema, {
+      apiSend("POST", `${base}/chat`, chatTranscriptSchema, {
         ...body,
         session_id: sessionId,
       }),
     onSuccess: (data) => {
-      writeSession(token, data.session_id);
+      writeSession(base, data.session_id);
       if (data.session_id !== sessionId) setSessionId(data.session_id);
-      queryClient.setQueryData(["public-chat", token, data.session_id], (old: typeof data | null | undefined) => ({
+      queryClient.setQueryData(["public-chat", base, data.session_id], (old: typeof data | null | undefined) => ({
         session_id: data.session_id,
         messages: [...(old?.messages ?? []), ...data.messages],
       }));
@@ -71,9 +74,9 @@ export function usePublicChat(token: string) {
   });
 
   const reset = useCallback(() => {
-    writeSession(token, null);
+    writeSession(base, null);
     setSessionId(null);
-  }, [token]);
+  }, [base]);
 
   return { sessionId, transcript, send, reset };
 }

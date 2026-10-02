@@ -15,20 +15,20 @@ export function matchErrorMessage(error: unknown): string {
   return "The job description couldn't be submitted. Please try again.";
 }
 
-/** Employer-side matching on /p/[token]. */
-export function usePublicMatch(token: string, matchId: string | null) {
+/** Public matching (employer profile `/public/p/<token>` or website `/public/sites/<slug>`). */
+export function usePublicMatch(base: string, matchId: string | null) {
   return useQuery({
-    queryKey: ["public-match", token, matchId],
-    queryFn: () => apiGet(`/public/p/${encodeURIComponent(token)}/match/${encodeURIComponent(matchId!)}`, matchSchema),
+    queryKey: ["public-match", base, matchId],
+    queryFn: () => apiGet(`${base}/match/${encodeURIComponent(matchId!)}`, matchSchema),
     enabled: matchId !== null,
     refetchInterval: poll,
   });
 }
 
-export function useStartPublicMatch(token: string) {
+export function useStartPublicMatch(base: string) {
   return useMutation({
     mutationFn: (body: { job_description: string; turnstile_token?: string | null }) =>
-      apiSend("POST", `/public/p/${encodeURIComponent(token)}/match`, matchSchema, body),
+      apiSend("POST", `${base}/match`, matchSchema, body),
   });
 }
 

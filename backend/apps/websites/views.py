@@ -39,7 +39,8 @@ def website(request):
         try:
             site = WebsiteService.update(site, serializer.validated_data)
         except SlugError as exc:
-            return Response({"slug": [exc.message]}, status=status.HTTP_400_BAD_REQUEST)
+            field = "template" if "template" in exc.message.lower() else "slug"
+            return Response({field: [exc.message]}, status=status.HTTP_400_BAD_REQUEST)
     return Response(_payload(site))
 
 

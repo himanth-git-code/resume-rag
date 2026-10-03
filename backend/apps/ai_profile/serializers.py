@@ -13,7 +13,9 @@ class EmployerProfileSerializer(serializers.ModelSerializer):
         fields = [
             "enabled", "path", "token_created_at", "expires_at",
             "visible_sections", "chatbot_enabled", "matching_enabled",
+            "admin_disabled", "admin_disabled_reason",
         ]
+        read_only_fields = ["admin_disabled", "admin_disabled_reason"]
 
     def get_path(self, profile):
         return f"/p/{profile.token}"

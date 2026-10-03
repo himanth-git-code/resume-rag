@@ -110,11 +110,16 @@ export default function EmployerProfilePage() {
           <CardDescription>Anyone with the link can view your profile while sharing is on.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-5">
+          {data.admin_disabled && (
+            <p role="alert" className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
+              Turned off by an administrator: {data.admin_disabled_reason || "no reason given"}. Contact support if you think this is a mistake.
+            </p>
+          )}
           <Toggle
             id="enabled"
             label="Share my profile"
-            checked={data.enabled}
-            disabled={update.isPending}
+            checked={data.enabled && !data.admin_disabled}
+            disabled={update.isPending || data.admin_disabled}
             onChange={(enabled) => save({ enabled })}
           />
           <div className="grid gap-1.5">

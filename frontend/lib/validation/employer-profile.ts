@@ -36,6 +36,8 @@ export const employerProfileSchema = z.object({
   chatbot_enabled: z.boolean(),
   matching_enabled: z.boolean(),
   has_profile: z.boolean().optional(),
+  admin_disabled: z.boolean().default(false),
+  admin_disabled_reason: z.string().default(""),
 });
 
 export const activitySchema = z.object({

@@ -6,6 +6,7 @@ from apps.ai.errors import AIError, AITransientError
 
 from .models import KnowledgeBaseState
 from .services import KnowledgeBaseService
+from apps.audit.services import record
 
 Status = KnowledgeBaseState.Status
 LOCK_TIMEOUT = 600
@@ -31,10 +32,12 @@ def rebuild_knowledge_base(self, user_id: int) -> None:
     except AITransientError as exc:
         if self.request.retries >= self.max_retries:
             KnowledgeBaseService.set_status(user_id, Status.FAILED, "ai_unavailable")
+            record("ai.knowledge_base_failed", subject_user=user, error_code="ai_unavailable")
             return
         # Stays "indexing" while retrying; existing chunks remain searchable.
         raise self.retry(exc=exc, countdown=min(30 * 2**self.request.retries, 600))
     except AIError:
         KnowledgeBaseService.set_status(user_id, Status.FAILED, "ai_error")
+        record("ai.knowledge_base_failed", subject_user=user, error_code="ai_error")
     finally:
         cache.delete(lock)

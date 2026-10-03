@@ -119,6 +119,8 @@ REST_FRAMEWORK = {
         "public_poll": env("PUBLIC_POLL_RATE", default="1500/hour"),
         "website_preview": env("WEBSITE_PREVIEW_RATE", default="60/hour"),
         "checkout": env("CHECKOUT_RATE", default="20/hour"),
+        "support_ticket": env("SUPPORT_TICKET_RATE", default="10/day"),
+        "support_reply": env("SUPPORT_REPLY_RATE", default="60/hour"),
     },
     # Client IP for throttling = the X-Forwarded-For entry added by our outermost
     # trusted proxy: 1 locally (Next.js), 2 behind the production load balancer.
@@ -173,6 +175,10 @@ if GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET:
     }
 
 EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")
+# Public frontend address, for links in emails.
+FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:3000")
+# Who hears about new support tickets/replies (defaults to all active staff).
+SUPPORT_NOTIFY_EMAILS = env.list("SUPPORT_NOTIFY_EMAILS", default=[])
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="no-reply@localhost")
 
 CELERY_BROKER_URL = REDIS_URL

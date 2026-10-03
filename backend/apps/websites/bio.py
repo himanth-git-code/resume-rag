@@ -13,6 +13,7 @@ from apps.ai.providers import get_provider
 from apps.candidates.services import CandidateProfileService
 
 from .models import Website
+from apps.audit.services import record
 
 logger = logging.getLogger(__name__)
 
@@ -92,5 +93,7 @@ class BioService:
 
     @staticmethod
     def mark_failed(website_id: int) -> None:
-        Website.objects.filter(pk=website_id, bio_draft_status=Status.PENDING).update(bio_draft_status=Status.FAILED)
+        if Website.objects.filter(pk=website_id, bio_draft_status=Status.PENDING).update(bio_draft_status=Status.FAILED):
+            website = Website.objects.select_related("user").get(pk=website_id)
+            record("ai.bio_draft_failed", subject_user=website.user, target=website)
 

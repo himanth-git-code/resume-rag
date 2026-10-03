@@ -49,6 +49,9 @@ class Website(models.Model):
     bio_draft_requested_at = models.DateTimeField(null=True, blank=True)
     show_chatbot = models.BooleanField(default=True)
     show_matching = models.BooleanField(default=False)
+    # Set by an administrator (policy violation): the site is offline and can't be published.
+    admin_blocked = models.BooleanField(default=False)
+    admin_blocked_reason = models.CharField(max_length=300, blank=True)
     published_version = models.ForeignKey(
         "WebsiteVersion", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
     )
@@ -99,3 +102,29 @@ class WebsiteEvent(models.Model):
 
     class Meta:
         ordering = ["-created_at", "-pk"]
+
+
+class TemplateSetting(models.Model):
+    """Admin-managed catalog entry for a code-defined template (see catalog.TEMPLATES)."""
+
+    key = models.CharField(max_length=20, unique=True)
+    enabled = models.BooleanField(default=True)
+    premium = models.BooleanField(default=False)
+    name = models.CharField(max_length=60)
+    description = models.CharField(max_length=300, blank=True)
+    # Default order for new sites; a subset of the template's supported sections.
+    default_sections = models.JSONField(default=list)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+class TemplateCatalogVersion(models.Model):
+    """Snapshot of every template's settings after each admin change (history + restore)."""
+
+    number = models.PositiveIntegerField(unique=True)
+    data = models.JSONField()
+    changed_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    note = models.CharField(max_length=200, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-number"]

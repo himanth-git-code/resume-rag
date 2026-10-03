@@ -27,6 +27,9 @@ class EmployerProfile(models.Model):
     visible_sections = models.JSONField(default=default_visible_sections)
     chatbot_enabled = models.BooleanField(default=True)
     matching_enabled = models.BooleanField(default=True)
+    # Set by an administrator (e.g. abuse); the candidate can't override it.
+    admin_disabled = models.BooleanField(default=False)
+    admin_disabled_reason = models.CharField(max_length=300, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

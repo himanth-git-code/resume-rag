@@ -47,7 +47,10 @@ class WebsiteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Website
-        fields = ["slug", "template", "theme", "sections", "overrides", "bio", "bio_draft", "show_chatbot", "show_matching", "updated_at"]
+        fields = [
+            "slug", "template", "theme", "sections", "overrides", "bio", "bio_draft", "show_chatbot", "show_matching",
+            "admin_blocked", "admin_blocked_reason", "updated_at",
+        ]
 
     def get_bio(self, website):
         return {"text": website.bio_text, "source": website.bio_source or None, "approved_at": website.bio_approved_at}

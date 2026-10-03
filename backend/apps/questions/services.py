@@ -12,6 +12,7 @@ from .models import Question, QuestionGeneration
 from .prompts import QUESTION_SYSTEM, question_prompt
 from .schemas import QuestionBatch
 from .sections import ProfileItems, Section, build_more_section, build_section, plan_full
+from apps.audit.services import record
 
 logger = logging.getLogger(__name__)
 
@@ -160,15 +161,19 @@ class QuestionGenerationService:
             gen.completed_at = timezone.now()
             gen.save(update_fields=["status", "completed_at"])
         logger.info("Question generation %s done: %s sections", gen.pk, len(gen.sections))
+        record("ai.questions_generated", subject_user=gen.owner, target=gen, kind=gen.kind, model=gen.model)
 
     @staticmethod
     def mark_failed(generation_id: int, code: str) -> None:
-        QuestionGeneration.objects.filter(pk=generation_id, status__in=[Status.PENDING, Status.RUNNING]).update(
+        updated = QuestionGeneration.objects.filter(pk=generation_id, status__in=[Status.PENDING, Status.RUNNING]).update(
             status=Status.FAILED,
             error_code=code,
             error_message=FAILURE_MESSAGES.get(code, FAILURE_MESSAGES["ai_error"]),
             completed_at=timezone.now(),
         )
+        if updated:
+            gen = QuestionGeneration.objects.select_related("owner").get(pk=generation_id)
+            record("ai.questions_failed", subject_user=gen.owner, target=gen, error_code=code)
 
     @staticmethod
     def _section(gen: QuestionGeneration, key: str, items: ProfileItems) -> Section | None:

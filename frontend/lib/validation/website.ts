@@ -19,6 +19,8 @@ export const websiteSchema = z.object({
   bio_draft: z.object({ status: z.enum(["pending", "done", "failed"]).nullable(), text: z.string().nullable() }),
   show_chatbot: z.boolean(),
   show_matching: z.boolean(),
+  admin_blocked: z.boolean().default(false),
+  admin_blocked_reason: z.string().default(""),
   updated_at: z.string(),
   has_profile: z.boolean(),
   suggested_slug: z.string().nullable(),

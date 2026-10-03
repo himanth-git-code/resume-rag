@@ -49,7 +49,7 @@ TEMPLATES = {
     },
 }
 DEFAULT_TEMPLATE = "modern"
-# Publishing with these needs the `premium_templates` entitlement (editing and preview are free).
+# Default Pro templates; admins can change this in the template catalog (TemplateSetting).
 PREMIUM_TEMPLATES = {"executive", "technical", "creative"}
 
 PALETTES = {
@@ -76,13 +76,55 @@ RESERVED_SLUGS = {
 }
 
 
+def effective_templates() -> dict[str, dict]:
+    """Code-defined templates with the admin's catalog settings applied.
+
+    `supported` is what the code can render; `sections` is the admin's default
+    order for new sites (a subset of `supported`).
+    """
+    from .models import TemplateSetting  # catalog <-> models import cycle
+
+    settings_by_key = {s.key: s for s in TemplateSetting.objects.all()}
+    result = {}
+    for key, base in TEMPLATES.items():
+        s = settings_by_key.get(key)
+        defaults = [k for k in (s.default_sections if s and s.default_sections else base["sections"]) if k in base["sections"]]
+        result[key] = {
+            "name": s.name if s else base["name"],
+            "description": s.description if s else base["description"],
+            "enabled": s.enabled if s else True,
+            "premium": s.premium if s else key in PREMIUM_TEMPLATES,
+            "sections": defaults or list(base["sections"]),
+            "supported": list(base["sections"]),
+        }
+    return result
+
+
+def is_premium(template: str) -> bool:
+    return effective_templates().get(template, {}).get("premium", False)
+
+
+def is_enabled(template: str) -> bool:
+    return effective_templates().get(template, {}).get("enabled", False)
+
+
 def default_sections(template: str) -> list[dict]:
-    return [{"key": key, "visible": True} for key in TEMPLATES[template]["sections"]]
+    try:
+        keys = effective_templates()[template]["sections"]
+    except Exception:  # e.g. before migrations exist
+        keys = TEMPLATES[template]["sections"]
+    return [{"key": key, "visible": True} for key in keys]
 
 
 def catalog() -> dict:
+    """What the candidate's editor offers: enabled templates only."""
+    templates = effective_templates()
     return {
-        "templates": [{"key": k, **v, "premium": k in PREMIUM_TEMPLATES} for k, v in TEMPLATES.items()],
+        "templates": [
+            {"key": k, "name": v["name"], "description": v["description"], "sections": v["sections"], "premium": v["premium"]}
+            for k, v in templates.items()
+            if v["enabled"]
+        ],
         "sections": SECTIONS,
         "palettes": [{"key": k, "name": v} for k, v in PALETTES.items()],
         "modes": list(MODES),

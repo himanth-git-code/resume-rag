@@ -16,6 +16,7 @@ from django.utils import timezone
 from .models import Entitlement, Payment, Product, WebhookEvent
 from .providers import PaymentProviderError, ProviderPayment, get_payment_provider
 from .providers.razorpay import to_payment
+from apps.audit.services import record
 
 logger = logging.getLogger(__name__)
 
@@ -44,11 +45,21 @@ class EntitlementService:
         return Entitlement.objects.filter(user=user, code=code, revoked_at__isnull=True).exists()
 
     @staticmethod
-    def grant(user, codes, payment: Payment | None) -> None:
+    def grant(user, codes, payment: Payment | None, *, granted_by=None, reason: str = "") -> None:
         """Idempotent: codes the user already holds are left as they are."""
+        source = Entitlement.Source.ADMIN if granted_by is not None else Entitlement.Source.PAYMENT
         for code in codes:
             if not EntitlementService.has(user, code):
-                Entitlement.objects.create(user=user, code=code, payment=payment)
+                Entitlement.objects.create(
+                    user=user, code=code, payment=payment, source=source, granted_by=granted_by, reason=reason[:300]
+                )
+
+    @staticmethod
+    def revoke_all(user, codes) -> int:
+        """End the user's active entitlements for `codes` (any source) and apply the effects."""
+        revoked = Entitlement.objects.filter(user=user, code__in=codes, revoked_at__isnull=True).update(revoked_at=timezone.now())
+        EntitlementService.apply_revocation_effects(user)
+        return revoked
 
     @staticmethod
     def revoke_for_payment(payment: Payment) -> None:
@@ -154,6 +165,7 @@ class PaymentService:
         payment.failure_reason = ""
         payment.save(update_fields=["status", "provider_payment_id", "paid_at", "failure_reason", "updated_at"])
         EntitlementService.grant(payment.user, payment.product.entitlements, payment)
+        record("payment.successful", subject_user=payment.user, target=payment, amount=payment.amount, currency=payment.currency)
         return "granted"
 
     @staticmethod
@@ -163,6 +175,7 @@ class PaymentService:
         payment.status = Status.FAILED
         payment.failure_reason = remote.error or "The payment was declined."
         payment.save(update_fields=["status", "failure_reason", "updated_at"])
+        record("payment.failed", subject_user=payment.user, target=payment)
         return "failed"
 
     @staticmethod
@@ -175,6 +188,8 @@ class PaymentService:
             payment.status = Status.REFUNDED
             fields.append("status")
         payment.save(update_fields=fields)
+        record("payment.refunded", subject_user=payment.user, target=payment, refunded_amount=amount_refunded,
+               full=payment.status == Status.REFUNDED)
         if payment.status == Status.REFUNDED:
             EntitlementService.revoke_for_payment(payment)
             return "refunded_revoked"

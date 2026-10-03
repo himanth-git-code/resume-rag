@@ -79,6 +79,15 @@ export default function WebsitePage() {
         </Button>
       </div>
 
+      {site.admin_blocked && (
+        <Alert variant="destructive">
+          <AlertDescription>
+            An administrator has taken your website offline and turned off publishing: {site.admin_blocked_reason || "no reason given"}.
+            Contact support if you think this is a mistake.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {!site.has_profile && (
         <Alert>
           <AlertDescription className="flex flex-wrap items-center justify-between gap-3">

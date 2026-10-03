@@ -6,6 +6,8 @@ from apps.candidates.services import CandidateProfileService
 from apps.knowledge_base.chunking import ChunkSpec, build_chunks
 from apps.knowledge_base.services import CandidateRetrievalService
 
+from apps.audit.services import record
+
 from .models import SECTIONS, EmployerProfile, ProfileAccessEvent, new_token
 from .public import ip_hash, user_agent
 
@@ -47,7 +49,8 @@ class EmployerProfileService:
         return profile
 
     @staticmethod
-    def update(profile: EmployerProfile, data: dict) -> EmployerProfile:
+    def update(profile: EmployerProfile, data: dict, request=None) -> EmployerProfile:
+        was_enabled = profile.enabled
         for field in ("enabled", "chatbot_enabled", "matching_enabled", "expires_at"):
             if field in data:
                 setattr(profile, field, data[field])
@@ -56,6 +59,11 @@ class EmployerProfileService:
                 section: bool(data["visible_sections"].get(section, profile.is_visible(section))) for section in SECTIONS
             }
         profile.save()
+        if profile.enabled != was_enabled:
+            record(
+                "employer_profile.enabled" if profile.enabled else "employer_profile.disabled",
+                actor=profile.user, request=request, subject_user=profile.user, target=profile,
+            )
         return profile
 
     @staticmethod
@@ -64,11 +72,16 @@ class EmployerProfileService:
         profile.token = new_token()
         profile.token_created_at = timezone.now()
         profile.save(update_fields=["token", "token_created_at", "updated_at"])
+        record("employer_profile.link_regenerated", actor=profile.user, subject_user=profile.user, target=profile)
         return profile
 
     @staticmethod
     def resolve(token: str) -> EmployerProfile:
-        profile = EmployerProfile.objects.select_related("user").filter(token=token, enabled=True).first()
+        profile = (
+            EmployerProfile.objects.select_related("user")
+            .filter(token=token, enabled=True, admin_disabled=False, user__is_active=True)
+            .first()
+        )
         if profile is None or (profile.expires_at and profile.expires_at <= timezone.now()):
             raise NotAvailable
         if not CandidateProfile.objects.filter(user=profile.user).exists():
@@ -129,6 +142,7 @@ class EmployerProfileService:
             if not cache.add(f"profile-view:{profile.pk}:{hashed}", 1, timeout=VIEW_DEDUPE_SECONDS):
                 return
         ProfileAccessEvent.objects.create(profile=profile, kind=kind, ip_hash=hashed, user_agent=user_agent(request))
+        record(f"employer_profile.public_{kind}", request=request, subject_user=profile.user, target=profile)
 
     @staticmethod
     def activity(profile: EmployerProfile) -> dict:

@@ -71,7 +71,14 @@ class Entitlement(models.Model):
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="entitlements")
     code = models.CharField(max_length=40, choices=Code.choices)
+    class Source(models.TextChoices):
+        PAYMENT = "payment", "Payment"
+        ADMIN = "admin", "Granted by an admin"
+
     payment = models.ForeignKey(Payment, null=True, blank=True, on_delete=models.SET_NULL, related_name="entitlements")
+    source = models.CharField(max_length=10, choices=Source.choices, default=Source.PAYMENT)
+    granted_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    reason = models.CharField(max_length=300, blank=True)
     granted_at = models.DateTimeField(auto_now_add=True)
     revoked_at = models.DateTimeField(null=True, blank=True)
 

@@ -10,6 +10,7 @@ from apps.documents.services import DocumentService
 from .models import ResumeParseJob
 from .prompts import RESUME_EXTRACTION_SYSTEM, resume_extraction_prompt
 from .schemas import ResumeExtraction
+from apps.audit.services import record
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +33,7 @@ class ResumeProcessingService:
         with transaction.atomic():
             document = DocumentService.create_resume(owner, upload)
             job = ResumeParseJob.objects.create(document=document)
+            record("resume.uploaded", actor=owner, subject_user=owner, target=document, content_type=document.content_type, size=document.size)
             transaction.on_commit(lambda: process_resume.delay(job.pk))
         return job
 
@@ -90,16 +92,20 @@ class ResumeProcessingService:
             completed_at=timezone.now(),
             updated_at=timezone.now(),
         )
+        record("ai.resume_parsed", subject_user=job.document.owner, target=job, model=result.model)
 
     @staticmethod
     def mark_failed(job_id: int, code: str) -> None:
-        ResumeParseJob.objects.filter(pk=job_id).exclude(status__in=[Status.READY_FOR_REVIEW, Status.APPLIED]).update(
+        updated = ResumeParseJob.objects.filter(pk=job_id).exclude(status__in=[Status.READY_FOR_REVIEW, Status.APPLIED]).update(
             status=Status.FAILED,
             error_code=code,
             error_message=FAILURE_MESSAGES.get(code, FAILURE_MESSAGES["ai_error"]),
             completed_at=timezone.now(),
             updated_at=timezone.now(),
         )
+        if updated:
+            job = ResumeParseJob.objects.select_related("document__owner").get(pk=job_id)
+            record("ai.resume_parse_failed", subject_user=job.document.owner, target=job, error_code=code)
 
     @staticmethod
     def latest_job_for(owner) -> ResumeParseJob | None:

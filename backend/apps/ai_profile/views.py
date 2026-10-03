@@ -37,7 +37,7 @@ def employer_profile(request):
     if request.method == "PUT":
         serializer = EmployerProfileUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        profile = EmployerProfileService.update(profile, serializer.validated_data)
+        profile = EmployerProfileService.update(profile, serializer.validated_data, request)
     body = EmployerProfileSerializer(profile).data
     body["has_profile"] = CandidateProfile.objects.filter(user=request.user).exists()
     return Response(body)

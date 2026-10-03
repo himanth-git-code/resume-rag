@@ -11,7 +11,9 @@ from apps.ai_profile.public import ip_hash
 from apps.candidates.models import CandidateProfile
 from apps.candidates.services import CandidateProfileService
 
-from .catalog import PREMIUM_TEMPLATES, RESERVED_SLUGS, SECTIONS, SLUG_PATTERN, TEMPLATES, default_sections
+from .catalog import RESERVED_SLUGS, SECTIONS, SLUG_PATTERN, TEMPLATES, default_sections, is_enabled, is_premium
+from apps.audit.services import record
+
 from .models import PreviewToken, Website, WebsiteEvent, WebsiteVersion
 
 PREVIEW_TTL = timedelta(minutes=30)
@@ -97,6 +99,8 @@ class WebsiteService:
             website.slug = WebsiteService.validate_slug(data["slug"], website) if data["slug"] else None
 
         if "template" in data and data["template"] != website.template:
+            if not is_enabled(data["template"]):
+                raise SlugError("That template isn't available.")
             # Keep the candidate's visibility choices for sections the new template also has.
             hidden = {s["key"] for s in website.sections if not s["visible"]}
             website.template = data["template"]
@@ -251,9 +255,13 @@ class WebsiteService:
 
         problems = []
         codes = EntitlementService.active_codes(website.user)
+        if website.admin_blocked:
+            problems.append("Publishing is disabled by an administrator.")
+        if not is_enabled(website.template):
+            problems.append("This template is no longer available. Please choose another.")
         if Entitlement.Code.WEBSITE_PUBLISH not in codes:
             problems.append("Unlock Pro to publish your site.")
-        elif website.template in PREMIUM_TEMPLATES and Entitlement.Code.PREMIUM_TEMPLATES not in codes:
+        elif is_premium(website.template) and Entitlement.Code.PREMIUM_TEMPLATES not in codes:
             problems.append("This template is part of Pro.")
         if not CandidateProfile.objects.filter(user=website.user).exists():
             problems.append("Save your profile first.")
@@ -311,11 +319,12 @@ class PublishingService:
         WebsiteEvent.objects.create(
             website=website, kind=WebsiteEvent.Kind.PUBLISHED, ip_hash=ip_hash(request) if request is not None else ""
         )
+        record("website.published", actor=website.user, request=request, subject_user=website.user, target=website, version=version.number)
         return version
 
     @staticmethod
     @transaction.atomic
-    def unpublish(website: Website, request=None) -> None:
+    def unpublish(website: Website, request=None, actor=None) -> None:
         if website.published_version_id is None:
             return
         website.published_version = None
@@ -323,6 +332,7 @@ class PublishingService:
         WebsiteEvent.objects.create(
             website=website, kind=WebsiteEvent.Kind.UNPUBLISHED, ip_hash=ip_hash(request) if request is not None else ""
         )
+        record("website.unpublished", actor=actor, request=request, subject_user=website.user, target=website)
 
     @staticmethod
     def status(website: Website) -> dict:
@@ -342,7 +352,7 @@ class PublishingService:
         """The published website at `slug`, or None (unknown, or not published)."""
         return (
             Website.objects.select_related("published_version", "user")
-            .filter(slug=(slug or "").lower(), published_version__isnull=False)
+            .filter(slug=(slug or "").lower(), published_version__isnull=False, admin_blocked=False, user__is_active=True)
             .first()
         )
 

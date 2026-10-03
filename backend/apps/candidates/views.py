@@ -5,6 +5,7 @@ from rest_framework.response import Response
 
 from apps.knowledge_base.services import KnowledgeBaseService
 from apps.payments.services import EntitlementService
+from apps.support.services import StaffSupportService, SupportService
 from apps.resume_parser.models import ResumeParseJob
 from apps.resume_parser.services import ResumeProcessingService
 
@@ -30,6 +31,10 @@ def me(request):
             "dashboard": CandidateDashboardService.get_state(user),
             "knowledge_base": KnowledgeBaseService.state_for(user),
             "entitlements": sorted(EntitlementService.active_codes(user)),
+            "is_staff": user.is_staff,
+            "is_superuser": user.is_superuser,
+            "support_unread": SupportService.unread_count(user),
+            "staff_support_unread": StaffSupportService.unread_count() if user.is_staff else 0,
         }
     )
 

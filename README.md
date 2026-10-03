@@ -187,6 +187,67 @@ From **Website** (`/website`) candidates choose a web address (`/portfolio/<name
   - Their conversations and matches are labelled "Website" in the candidate's history, and can't be continued through the employer link.
 - **Paid features:** publishing needs Pro (`website_publish`), and publishing with the Executive, Technical or Creative template also needs `premium_templates`. Both are checked in `WebsiteService.publish_problems`.
 
+## Support
+
+Candidates open requests at `/support` (subject, priority Low/Normal/High, description, up to 3 PNG/JPEG/PDF attachments of at most 5 MB each) and follow the conversation at `/support/<number>`. Staff work from the in-app inbox at `/admin/support`, which needs a staff account.
+
+- **Statuses:** Open → In progress → Waiting for user → Resolved → Closed.
+  - A public staff reply sets "Waiting for user" unless staff choose another status.
+  - A candidate reply to a waiting or resolved ticket reopens it.
+  - Closed tickets refuse replies.
+- **Staff tools:** filters (active, status, priority, assignee, unread, search), assignment, priority (including Urgent) and **internal notes**.
+  - Internal notes, and priority and assignment changes, are staff-only.
+  - Status changes appear in the thread for both sides.
+- **Attachments:** validated by content, stored privately under random keys, and served only to the ticket's candidate or staff, through Django with `nosniff` and a sandbox CSP. PDFs download rather than render inline.
+- **Notifications:**
+  - **In-app:** unread badges on the Support and Admin nav links.
+  - **Email:** sent by Celery, through Django's `EMAIL_BACKEND`. The console backend locally; SMTP or SES in production.
+    - Candidates are emailed when staff reply and when their request is resolved or closed.
+    - Support (`SUPPORT_NOTIFY_EMAILS`, or all staff) is emailed on new requests and candidate replies.
+    - Internal notes are never emailed, and sends are idempotent.
+
+**Create a staff account:**
+
+```bash
+docker compose exec backend python manage.py createsuperuser
+```
+
+You can also tick "Staff status" on an existing user in Django admin at `http://localhost:8000/admin/`.
+
+## Admin dashboard
+
+The in-app dashboard at `/admin` (not Django admin) has two roles:
+
+- **Support staff** (`is_staff`) see only the support inbox.
+- **Admins** (`is_superuser`, from `createsuperuser`) see everything. Every admin API under `/api/admin/` (other than the support inbox) requires a superuser.
+
+Its pages:
+
+- **Overview:** registrations, active candidates (signed in within 30 days), completed profiles, published websites, enabled employer profiles, payments, revenue net of refunds (per currency, all-time and 30 days), open tickets and daily sign-ups.
+- **Users:** search and filters (account, profile, plan, website, AI profile). Each user has a detail page with profile, website, employer-profile, entitlement, payment and support panels, plus their audit timeline.
+  - **Actions** each need a reason, which is kept in the audit log. Staff and admin accounts can't be changed here.
+
+    | Action | Effect |
+    | --- | --- |
+    | Suspend / reactivate | Turns sign-in off or on. While suspended, the user's employer link and website return 404, and no data is changed. |
+    | Disable / re-enable AI profile | The employer link returns 404 even if the candidate turns sharing on. They see the reason. |
+    | Take website offline / allow publishing | Unpublishes the site and blocks publishing until allowed again. |
+    | Grant / revoke Pro | Grants or revokes the Pro product's entitlements (source `admin`, with who granted it and why). Revoking also unpublishes the site. |
+- **Payments:** filters (status, provider, date range, and search by email, payment ID or order ID), with refund status. This page is view-only: refunds are issued in the Razorpay dashboard and arrive by webhook.
+- **Support:** the inbox described above.
+- **Templates:** layouts stay in code (`frontend/components/website-templates`). Admins can:
+  - enable or hide each template (at least one stays enabled), and mark it Pro or free
+  - edit its name and description
+  - choose and order its default sections
+  - preview it with built-in sample data at `/template-preview/<key>`
+
+  Hidden templates can't be newly selected, but already-published sites keep serving until republished. Every change saves a catalog version, and any version can be restored.
+- **AI jobs:** per-pipeline status counts for the last 7 days (resume parsing, question generation, knowledge base, employer chat, job matching and bio drafts), recent failures with error codes (never content), and stuck items (pending for over 30 minutes).
+- **Audit log:** sign-ins and failed sign-ins (email domain only), resume uploads, profile updates, AI processing results, employer-profile changes and public views, publishing, payments and refunds, support changes and every admin action.
+  - Filter by event type, actor, user email and date.
+  - Metadata never includes resume, chat, note or job-description content, and IPs are stored hashed.
+  - Audit writes are best-effort: a failed write never breaks the action being recorded.
+
 ## AI provider configuration
 
 All AI calls go through `apps.ai.providers.get_provider()` (the `AIProvider` interface in `backend/apps/ai/`), so business logic never imports a vendor SDK.

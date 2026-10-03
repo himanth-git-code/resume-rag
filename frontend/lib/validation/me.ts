@@ -17,4 +17,8 @@ export const meSchema = z.object({
     indexed_at: z.string().nullable(),
   }),
   entitlements: z.array(z.string()).default([]),
+  is_staff: z.boolean().default(false),
+  is_superuser: z.boolean().default(false),
+  support_unread: z.number().default(0),
+  staff_support_unread: z.number().default(0),
 });
